@@ -11,15 +11,16 @@
 
 // Header
 #define ID3V2_FILE_IDENTIFIER   "ID3"
-#define ID3V2_FOOTER_IDENTIFIER "3DI"
 
 #define ID3V2_HEADER_UNSYNCHRONIZATION_BIT 0x80
 #define ID3V2_HEADER_EXTENDED_HEADER_BIT   0x40
 #define ID3V2_HEADER_EXPERIMENTAL_BIT      0x20
 #define ID3V2_HEADER_FOOTER_BIT            0x10
 
+#define ID3V2_HEADER_ID_SIZE 3
+
 struct id3v2_header {
-    char     id[3];    // not null terminated
+    char     id[ID3V2_HEADER_ID_SIZE]; // not null terminated
     uint8_t  version;
     uint8_t  revision;
     uint8_t  flags;
@@ -85,8 +86,10 @@ struct id3v2_extended_header {
 #define ID3V2_FOOTER_EXPERIMENTAL_BIT      0x20
 #define ID3V2_FOOTER_FOOTER_BIT            0x10
 
+#define ID3V2_FOOTER_ID_SIZE 3
+
 struct id3v2_footer {
-    char     id[3];    // not null terminated
+    char     id[ID3V2_FOOTER_ID_SIZE]; // not null terminated
     uint8_t  version;
     uint8_t  revision;
     uint8_t  flags;
@@ -104,9 +107,11 @@ struct id3v2_footer {
 #define ID3V2_FRAME_HEADER_UNSYNCHRONIZATION_BIT 0x02
 #define ID3V2_FRAME_HEADER_DATA_LENGTH_BIT       0x01
 
+#define ID3V2_FRAME_ID_SIZE 4
+
 struct id3v2_frame_header {
-    char     id[4];       // not null terminated
-    uint32_t size;        // synchsafe
+    char     id[ID3V2_FRAME_ID_SIZE]; // not null terminated
+    uint32_t size;                    // synchsafe
     uint8_t status_flags;
     uint8_t format_flags;
 };
@@ -120,122 +125,238 @@ enum id3v2_encoding {
 };
 
 // Frames
-#define ID3V2_FRAME_AENC "AENC" // Audio encryption
-#define ID3V2_FRAME_APIC "APIC" // Attached picture
-#define ID3V2_FRAME_ASPI "ASPI" // Audio seek point index
-#define ID3V2_FRAME_COMM "COMM" // Comments
-#define ID3V2_FRAME_COMR "COMR" // Commercial frame
-#define ID3V2_FRAME_ENCR "ENCR" // Encryption method registration
-#define ID3V2_FRAME_EQU2 "EQU2" // Equalisation (2)
-#define ID3V2_FRAME_ETCO "ETCO" // Event timing codes
-#define ID3V2_FRAME_GEOB "GEOB" // General encapsulated object
-#define ID3V2_FRAME_GRID "GRID" // Group identification registration
-#define ID3V2_FRAME_LINK "LINK" // Linked information
-#define ID3V2_FRAME_MCDI "MCDI" // Music CD identifier
-#define ID3V2_FRAME_MLLT "MLLT" // MPEG location lookup table
-#define ID3V2_FRAME_OWNE "OWNE" // Ownership frame
-#define ID3V2_FRAME_PRIV "PRIV" // Private frame
-#define ID3V2_FRAME_PCNT "PCNT" // Play counter
-#define ID3V2_FRAME_POPM "POPM" // Popularimeter
-#define ID3V2_FRAME_POSS "POSS" // Position synchronisation frame
-#define ID3V2_FRAME_RBUF "RBUF" // Recommended buffer size
-#define ID3V2_FRAME_RVA2 "RVA2" // Relative volume adjustment (2)
-#define ID3V2_FRAME_RVRB "RVRB" // Reverb
-#define ID3V2_FRAME_SEEK "SEEK" // Seek frame
-#define ID3V2_FRAME_SIGN "SIGN" // Signature frame
-#define ID3V2_FRAME_SYLT "SYLT" // Synchronised lyric/text
-#define ID3V2_FRAME_SYTC "SYTC" // Synchronised tempo codes
-#define ID3V2_FRAME_TALB "TALB" // Album/Movie/Show title
-#define ID3V2_FRAME_TBPM "TBPM" // BPM (beats per minute)
-#define ID3V2_FRAME_TCOM "TCOM" // Composer
-#define ID3V2_FRAME_TCON "TCON" // Content type
-#define ID3V2_FRAME_TCOP "TCOP" // Copyright message
-#define ID3V2_FRAME_TDEN "TDEN" // Encoding time
-#define ID3V2_FRAME_TDLY "TDLY" // Playlist delay
-#define ID3V2_FRAME_TDOR "TDOR" // Original release time
-#define ID3V2_FRAME_TDRC "TDRC" // Recording time
-#define ID3V2_FRAME_TDRL "TDRL" // Release time
-#define ID3V2_FRAME_TDTG "TDTG" // Tagging time
-#define ID3V2_FRAME_TENC "TENC" // Encoded by
-#define ID3V2_FRAME_TEXT "TEXT" // Lyricist/Text writer
-#define ID3V2_FRAME_TFLT "TFLT" // File type
-#define ID3V2_FRAME_TIPL "TIPL" // Involved people list
-#define ID3V2_FRAME_TIT1 "TIT1" // Content group description
-#define ID3V2_FRAME_TIT2 "TIT2" // Title/songname/content description
-#define ID3V2_FRAME_TIT3 "TIT3" //  Subtitle/Description refinement
-#define ID3V2_FRAME_TKEY "TKEY" // Initial key
-#define ID3V2_FRAME_TLAN "TLAN" // Language(s)
-#define ID3V2_FRAME_TLEN "TLEN" // Length
-#define ID3V2_FRAME_TMCL "TMCL" // Musician credits list
-#define ID3V2_FRAME_TMED "TMED" // Media type
-#define ID3V2_FRAME_TMOO "TMOO" // Mood
-#define ID3V2_FRAME_TOAL "TOAL" // Original album/movie/show title
-#define ID3V2_FRAME_TOFN "TOFN" // Original filename
-#define ID3V2_FRAME_TOLY "TOLY" // Original lyricist(s)/text writer(s)
-#define ID3V2_FRAME_TOPE "TOPE" // Original artist(s)/performer(s)
-#define ID3V2_FRAME_TOWN "TOWN" // File owner/licensee
-#define ID3V2_FRAME_TPE1 "TPE1" // Lead performer(s)/Soloist(s)
-#define ID3V2_FRAME_TPE2 "TPE2" // Band/orchestra/accompaniment
-#define ID3V2_FRAME_TPE3 "TPE3" // Conductor/performer refinement
-#define ID3V2_FRAME_TPE4 "TPE4" // Interpreted, remixed, or otherwise modified by
-#define ID3V2_FRAME_TPOS "TPOS" // Part of a set
-#define ID3V2_FRAME_TPRO "TPRO" // Produced notice
-#define ID3V2_FRAME_TPUB "TPUB" // Publisher
-#define ID3V2_FRAME_TRCK "TRCK" // Track number/Position in set
-#define ID3V2_FRAME_TRSN "TRSN" // Internet radio station name
-#define ID3V2_FRAME_TRSO "TRSO" // Internet radio station owner
-#define ID3V2_FRAME_TSOA "TSOA" // Album sort order
-#define ID3V2_FRAME_TSOP "TSOP" // Performer sort order
-#define ID3V2_FRAME_TSOT "TSOT" // Title sort order
-#define ID3V2_FRAME_TSRC "TSRC" // ISRC (international standard recording code)
-#define ID3V2_FRAME_TSSE "TSSE" // Software/Hardware and settings used for encoding
-#define ID3V2_FRAME_TSST "TSST" // Set subtitle
-#define ID3V2_FRAME_TXXX "TXXX" // User defined text information frame
-#define ID3V2_FRAME_UFID "UFID" // Unique file identifier
-#define ID3V2_FRAME_USER "USER" // Terms of use
-#define ID3V2_FRAME_USLT "USLT" // Unsynchronised lyric/text transcription
-#define ID3V2_FRAME_WCOM "WCOM" // Commercial information
-#define ID3V2_FRAME_WCOP "WCOP" // Copyright/Legal information
-#define ID3V2_FRAME_WOAF "WOAF" // Official audio file webpage
-#define ID3V2_FRAME_WOAR "WOAR" // Official artist/performer webpage
-#define ID3V2_FRAME_WOAS "WOAS" // Official audio source webpage
-#define ID3V2_FRAME_WORS "WORS" // Official Internet radio station homepage
-#define ID3V2_FRAME_WPAY "WPAY" // Payment
-#define ID3V2_FRAME_WPUB "WPUB" // Publishers official webpage
-#define ID3V2_FRAME_WXXX "WXXX" // User defined URL link frame
+#define ID3V2_FRAME_ID_AENC "AENC" // Audio encryption
+#define ID3V2_FRAME_ID_APIC "APIC" // Attached picture
+#define ID3V2_FRAME_ID_ASPI "ASPI" // Audio seek point index
+#define ID3V2_FRAME_ID_COMM "COMM" // Comments
+#define ID3V2_FRAME_ID_COMR "COMR" // Commercial frame
+#define ID3V2_FRAME_ID_ENCR "ENCR" // Encryption method registration
+#define ID3V2_FRAME_ID_EQU2 "EQU2" // Equalisation (2)
+#define ID3V2_FRAME_ID_ETCO "ETCO" // Event timing codes
+#define ID3V2_FRAME_ID_GEOB "GEOB" // General encapsulated object
+#define ID3V2_FRAME_ID_GRID "GRID" // Group identification registration
+#define ID3V2_FRAME_ID_LINK "LINK" // Linked information
+#define ID3V2_FRAME_ID_MCDI "MCDI" // Music CD identifier
+#define ID3V2_FRAME_ID_MLLT "MLLT" // MPEG location lookup table
+#define ID3V2_FRAME_ID_OWNE "OWNE" // Ownership frame
+#define ID3V2_FRAME_ID_PRIV "PRIV" // Private frame
+#define ID3V2_FRAME_ID_PCNT "PCNT" // Play counter
+#define ID3V2_FRAME_ID_POPM "POPM" // Popularimeter
+#define ID3V2_FRAME_ID_POSS "POSS" // Position synchronisation frame
+#define ID3V2_FRAME_ID_RBUF "RBUF" // Recommended buffer size
+#define ID3V2_FRAME_ID_RVA2 "RVA2" // Relative volume adjustment (2)
+#define ID3V2_FRAME_ID_RVRB "RVRB" // Reverb
+#define ID3V2_FRAME_ID_SEEK "SEEK" // Seek frame
+#define ID3V2_FRAME_ID_SIGN "SIGN" // Signature frame
+#define ID3V2_FRAME_ID_SYLT "SYLT" // Synchronised lyric/text
+#define ID3V2_FRAME_ID_SYTC "SYTC" // Synchronised tempo codes
+#define ID3V2_FRAME_ID_TALB "TALB" // Album/Movie/Show title
+#define ID3V2_FRAME_ID_TBPM "TBPM" // BPM (beats per minute)
+#define ID3V2_FRAME_ID_TCOM "TCOM" // Composer
+#define ID3V2_FRAME_ID_TCON "TCON" // Content type
+#define ID3V2_FRAME_ID_TCOP "TCOP" // Copyright message
+#define ID3V2_FRAME_ID_TDEN "TDEN" // Encoding time
+#define ID3V2_FRAME_ID_TDLY "TDLY" // Playlist delay
+#define ID3V2_FRAME_ID_TDOR "TDOR" // Original release time
+#define ID3V2_FRAME_ID_TDRC "TDRC" // Recording time
+#define ID3V2_FRAME_ID_TDRL "TDRL" // Release time
+#define ID3V2_FRAME_ID_TDTG "TDTG" // Tagging time
+#define ID3V2_FRAME_ID_TENC "TENC" // Encoded by
+#define ID3V2_FRAME_ID_TEXT "TEXT" // Lyricist/Text writer
+#define ID3V2_FRAME_ID_TFLT "TFLT" // File type
+#define ID3V2_FRAME_ID_TIPL "TIPL" // Involved people list
+#define ID3V2_FRAME_ID_TIT1 "TIT1" // Content group description
+#define ID3V2_FRAME_ID_TIT2 "TIT2" // Title/songname/content description
+#define ID3V2_FRAME_ID_TIT3 "TIT3" //  Subtitle/Description refinement
+#define ID3V2_FRAME_ID_TKEY "TKEY" // Initial key
+#define ID3V2_FRAME_ID_TLAN "TLAN" // Language(s)
+#define ID3V2_FRAME_ID_TLEN "TLEN" // Length
+#define ID3V2_FRAME_ID_TMCL "TMCL" // Musician credits list
+#define ID3V2_FRAME_ID_TMED "TMED" // Media type
+#define ID3V2_FRAME_ID_TMOO "TMOO" // Mood
+#define ID3V2_FRAME_ID_TOAL "TOAL" // Original album/movie/show title
+#define ID3V2_FRAME_ID_TOFN "TOFN" // Original filename
+#define ID3V2_FRAME_ID_TOLY "TOLY" // Original lyricist(s)/text writer(s)
+#define ID3V2_FRAME_ID_TOPE "TOPE" // Original artist(s)/performer(s)
+#define ID3V2_FRAME_ID_TOWN "TOWN" // File owner/licensee
+#define ID3V2_FRAME_ID_TPE1 "TPE1" // Lead performer(s)/Soloist(s)
+#define ID3V2_FRAME_ID_TPE2 "TPE2" // Band/orchestra/accompaniment
+#define ID3V2_FRAME_ID_TPE3 "TPE3" // Conductor/performer refinement
+#define ID3V2_FRAME_ID_TPE4 "TPE4" // Interpreted, remixed, or otherwise modified by
+#define ID3V2_FRAME_ID_TPOS "TPOS" // Part of a set
+#define ID3V2_FRAME_ID_TPRO "TPRO" // Produced notice
+#define ID3V2_FRAME_ID_TPUB "TPUB" // Publisher
+#define ID3V2_FRAME_ID_TRCK "TRCK" // Track number/Position in set
+#define ID3V2_FRAME_ID_TRSN "TRSN" // Internet radio station name
+#define ID3V2_FRAME_ID_TRSO "TRSO" // Internet radio station owner
+#define ID3V2_FRAME_ID_TSOA "TSOA" // Album sort order
+#define ID3V2_FRAME_ID_TSOP "TSOP" // Performer sort order
+#define ID3V2_FRAME_ID_TSOT "TSOT" // Title sort order
+#define ID3V2_FRAME_ID_TSRC "TSRC" // ISRC (international standard recording code)
+#define ID3V2_FRAME_ID_TSSE "TSSE" // Software/Hardware and settings used for encoding
+#define ID3V2_FRAME_ID_TSST "TSST" // Set subtitle
+#define ID3V2_FRAME_ID_TXXX "TXXX" // User defined text information frame
+#define ID3V2_FRAME_ID_UFID "UFID" // Unique file identifier
+#define ID3V2_FRAME_ID_USER "USER" // Terms of use
+#define ID3V2_FRAME_ID_USLT "USLT" // Unsynchronised lyric/text transcription
+#define ID3V2_FRAME_ID_WCOM "WCOM" // Commercial information
+#define ID3V2_FRAME_ID_WCOP "WCOP" // Copyright/Legal information
+#define ID3V2_FRAME_ID_WOAF "WOAF" // Official audio file webpage
+#define ID3V2_FRAME_ID_WOAR "WOAR" // Official artist/performer webpage
+#define ID3V2_FRAME_ID_WOAS "WOAS" // Official audio source webpage
+#define ID3V2_FRAME_ID_WORS "WORS" // Official Internet radio station homepage
+#define ID3V2_FRAME_ID_WPAY "WPAY" // Payment
+#define ID3V2_FRAME_ID_WPUB "WPUB" // Publishers official webpage
+#define ID3V2_FRAME_ID_WXXX "WXXX" // User defined URL link frame
 
-struct id3v2_frame_ufid {
-    char frame[4];
+struct id3v2_frame_UFID {
     char *owner;
     uint8_t *id;
 };
 
+// T000-TZZZ, excluding TXXX
 struct id3v2_frame_text {
-    char frame[4];
     uint8_t encoding;
     char *text;
 }
 
-struct id3v2_frame_user_text {
-    char frame[4];
+struct id3v2_frame_TXXX {
     uint8_t encoding;
     char *description;
     char *value;
 };
 
+// W000-WZZZ, excluding WXXX
 struct id3v2_frame_url {
-    char frame[4];
     char *url;
 };
 
-struct id3v2_frame_music_cd {
-    char frame[4];
-    char *TOC;
+struct id3v2_frame_WXXX {
+    uint8_t encoding;
+    char *description;
+    char *url;
 };
 
-struct id3v2_event_timing {
-    char frame[4];
+struct id3v2_frame_MCDI {
+    uint8_t *TOC;
+};
+
+enum id3v2_timestamp_format {
+    ID3V2_TIMESTAMP_FORMAT_MPEG = 1,
+    ID3V2_TIMESTAMP_FORMAT_MS
+};
+
+#define ID3V2_EVENT_PADDING             0x00
+#define ID3V2_EVENT_INITIAL_SILENCE_END 0x01
+#define ID3V2_EVENT_INTRO_START         0x02
+#define ID3V2_EVENT_MAIN_PART_START     0x03
+#define ID3V2_EVENT_OUTRO_START         0x04
+#define ID3V2_EVENT_OUTRO_END           0x05
+#define ID3V2_EVENT_VERSE_START         0x06
+#define ID3V2_EVENT_REFRAIN_START       0x07
+#define ID3V2_EVENT_INTERLUDE_START     0x08
+#define ID3V2_EVENT_THEME_START         0x09
+#define ID3V2_EVENT_VARIATION_START     0x0A
+#define ID3V2_EVENT_KEY_CHANGE          0x0B
+#define ID3V2_EVENT_TIME_CHANGE         0x0C
+#define ID3V2_EVENT_MOMENTARY_NOISE     0x0D
+#define ID3V2_EVENT_SUSTAINED_NOISE     0x0E
+#define ID3V2_EVENT_SUSTAINED_NOISE_END 0x0F
+#define ID3V2_EVENT_INTRO_END           0x10
+#define ID3V2_EVENT_MAIN_PART_END       0x11
+#define ID3V2_EVENT_VERSE_END           0x12
+#define ID3V2_EVENT_REFRAIN_END         0x13
+#define ID3V2_EVENT_THEME_END           0x14
+#define ID3V2_EVENT_PROFANITY           0x15
+#define ID3V2_EVENT_PROFANITY_END       0x16
+// 0x17-0xFC reserved
+#define ID3V2_EVENT_AUDIO_END           0xFD
+#define ID3V2_EVENT_FILE_END            0xFE
+#define ID3V2_EVENT_EVENTS_FOLLOW       0xFF
+
+struct id3v2_ETCO_event {
+    uint8_t event_type;
+    uint32_t timestamp;
+}
+
+struct id3v2_frame_ETCO {
     uint8_t timestamp_format;
+    struct id3v2_ETCO_event *event_list;
+};
+
+struct id3v2_frame_MLLT {
+    uint32_t mpeg_frames_between_reference;
+    uint8_t bytes_between_reference[3];
+    uint8_t ms_between_reference[3];
+    uint8_t bits_for_bytes_deviation;
+    uint8_t bits_for_ms_deviation;
+    uint8_t *location_table;
+};
+
+struct id3v2_frame_SYTC {
+    uint8_t timestamp_format;
+    uint8_t *tempo_data;
+};
+
+struct id3v2_frame_USLT {
+    uint8_t encoding;
+    char language[3];
+    char *content_descriptor;
+    char *text;
+};
+
+enum id3v2_SYLT_text {
+    ID3V2_SYLT_TEXT_OTHER,
+    ID3V2_SYLT_TEXT_LYRICS,
+    ID3V2_SYLT_TEXT_TRANSCRIPTION,
+    ID3V2_SYLT_TEXT_MOVEMENT,
+    ID3V2_SYLT_TEXT_EVENT,
+    ID3V2_SYLT_TEXT_CHORD,
+    ID3V2_SYLT_TEXT_TRIVIA,
+    ID3V2_SYLT_TEXT_WEBPAGE,
+    ID3V2_SYLT_TEXT_IMAGE
+};
+
+#define ID3V2_LANGUAGE_ID_SIZE 3
+
+struct id3v2_frame_SYLT {
+    uint8_t encoding;
+    char language[ID3V2_LANGUAGE_ID_SIZE];
+    uint8_t timestamp_format;
+    uint8_t content_type;
+    char *content_descriptor;
+    uint8_t *synchronized_text;
+};
+
+struct id3v2_frame_COMM {
+    uint8_t encoding;
+    char language[ID3V2_LANGUAGE_ID_SIZE];
+    char *content_descriptor;
+    char *comment;
+};
+
+enum id3v2_RVA2_channel_type {
+    ID3V2_RVA2_CHANNEL_OTHER,
+    ID3V2_RVA2_CHANNEL_MASTER,
+    ID3V2_RVA2_CHANNEL_FRONT_RIGHT,
+    ID3V2_RVA2_CHANNEL_FRONT_LEFT,
+    ID3V2_RVA2_CHANNEL_BACK_RIGHT,
+    ID3V2_RVA2_CHANNEL_BACK_LEFT,
+    ID3V2_RVA2_CHANNEL_FRONT_CENTER,
+    ID3V2_RVA2_CHANNEL_BACK_CENTER,
+    ID3V2_RVA2_CHANNEL_SUBWOOFER
+};
+
+struct id3v2_RVA2_adjustment {
+    uint8_t channel_type;
+    int16_t adjustment;
+    uint8_t peak_bits;
+    uint8_t *peak_volume;
+};
+
+struct id3v2_frame_RVA2 {
+    char *identification;
+    struct id3v2_RVA2_adjustment *adjustment;
 };
 
 // Convert a synchsafe integer to a normal one

@@ -9,6 +9,9 @@
 
 #include <stdint.h>
 
+// Used for 3 byte integer values
+typedef struct uint24 { uint8_t byte[3]; } uint24_t;
+
 // Header
 #define ID3V2_FILE_IDENTIFIER   "ID3"
 
@@ -286,8 +289,8 @@ struct id3v2_frame_ETCO {
 
 struct id3v2_frame_MLLT {
     uint32_t mpeg_frames_between_reference;
-    uint8_t bytes_between_reference[3];
-    uint8_t ms_between_reference[3];
+    uint24_t bytes_between_reference;
+    uint24_t ms_between_reference;
     uint8_t bits_for_bytes_deviation;
     uint8_t bits_for_ms_deviation;
     uint8_t *location_table;
@@ -298,9 +301,11 @@ struct id3v2_frame_SYTC {
     uint8_t *tempo_data;
 };
 
+#define ID3V2_LANGUAGE_ID_SIZE 3
+
 struct id3v2_frame_USLT {
     uint8_t encoding;
-    char language[3];
+    char language[ID3V2_LANGUAGE_ID_SIZE];
     char *content_descriptor;
     char *text;
 };
@@ -316,8 +321,6 @@ enum id3v2_SYLT_text {
     ID3V2_SYLT_TEXT_WEBPAGE,
     ID3V2_SYLT_TEXT_IMAGE
 };
-
-#define ID3V2_LANGUAGE_ID_SIZE 3
 
 struct id3v2_frame_SYLT {
     uint8_t encoding;
@@ -357,6 +360,107 @@ struct id3v2_RVA2_adjustment {
 struct id3v2_frame_RVA2 {
     char *identification;
     struct id3v2_RVA2_adjustment *adjustment;
+};
+
+enum id3v2_EQU2_interpolation_method {
+    ID3V2_EQU2_INTERPOLATION_BAND,
+    ID3V2_EQU2_INTERPOLATION_LINEAR
+};
+
+struct id3v2_EQU2_adjustment {
+    uint16_t frequency;
+    int16_t volume_adjustment;
+};
+
+struct id3v2_frame_EQU2 {
+    uint8_t interpolation_method;
+    char *identification;
+    struct id3v2_EQU2_adjustment *adjustment_list;
+};
+
+#define ID3V2_RVRB_INFINITE_BOUNCES 0xFF
+
+struct id3v2_frame_RVRB {
+    uint16_t reverb_left;
+    uint16_t reverb_right;
+    uint8_t bounces_left;
+    uint8_t bounces_right;
+    uint8_t feedback_left_to_left;
+    uint8_t feedback_left_to_right;
+    uint8_t feedback_right_to_right;
+    uint8_t feedback_right_to_left;
+    uint8_t premix_left_to_right;
+    uint8_t premix_right_to_left;
+};
+
+enum id3v2_APIC_picture_type {
+    ID3V2_APIC_PICTURE_OTHER,
+    ID3V2_APIC_PICTURE_FILE_ICON,
+    ID3V2_APIC_PICTURE_FRONT_COVER,
+    ID3V2_APIC_PICTURE_BACK_COVER,
+    ID3V2_APIC_PICTURE_LEAFLET_PAGE,
+    ID3V2_APIC_PICTURE_MEDIA,
+    ID3V2_APIC_PICTURE_LEAD_ARTIST,
+    ID3V2_APIC_PICTURE_ARTIST,
+    ID3V2_APIC_PICTURE_CONDUCTOR,
+    ID3V2_APIC_PICTURE_ORCHESTRA,
+    ID3V2_APIC_PICTURE_COMPOSER,
+    ID3V2_APIC_PICTURE_LYRICIST,
+    ID3V2_APIC_PICTURE_RECORDING_LOCATION,
+    ID3V2_APIC_PICTURE_RECORDING,
+    ID3V2_APIC_PICTURE_PERFORMANCE,
+    ID3V2_APIC_PICTURE_SCREEN_CAPTURE,
+    ID3V2_APIC_PICTURE_BRIGHT_COLORED_FISH, // ?
+    ID3V2_APIC_PICTURE_ILLUSTRATION,
+    ID3V2_APIC_PICTURE_BAND_LOGOTYPE,
+    ID3V2_APIC_PICTURE_PUBLISHER_LOGOTYPE
+};
+
+struct id3v2_frame_APIC {
+    uint8_t encoding;
+    char *mime_type;
+    uint8_t picture_type;
+    char *description;
+    uint8_t *picture;
+};
+
+struct id3v2_frame_GEOB {
+    uint8_t encoding;
+    char *mime_type;
+    char *filename;
+    char *description;
+    uint8_t encapsulated_object;
+};
+
+struct id3v2_frame_PCNT {
+    uint8_t *play_counter;
+};
+
+struct id3v2_frame_POPM {
+    char *user_email;
+    uint8_t rating;
+    uint8_t *play_counter;
+};
+
+#define ID3V2_EMBEDDED_INFO_BIT 0x01
+
+struct id3v2_frame_RBUF {
+    uint24_t buffer_size;
+    uint8_t flags;
+    uint32_t tag_offset;
+};
+
+struct id3v2_frame_AENC {
+    char *owner_id;
+    uint16_t preview_start;
+    uint16_t preview_length;
+    uint8_t *encryption_info;
+};
+
+struct id3v2_frame_LINK {
+    char frame_id[ID3V2_FRAME_ID_SIZE];
+    char *url;
+    char *additional_data;
 };
 
 // Convert a synchsafe integer to a normal one

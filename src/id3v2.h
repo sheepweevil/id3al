@@ -25,7 +25,7 @@ struct id3v2_header {
     uint8_t  revision;
     uint8_t  flags;
     uint32_t tag_size; // synchsafe
-};
+} __attribute__((packed));
 
 // Extended header
 #define ID3V2_EXTENDED_FLAG_SIZE 0x01
@@ -94,7 +94,7 @@ struct id3v2_footer {
     uint8_t  revision;
     uint8_t  flags;
     uint32_t tag_size; // synchsafe
-};
+} __attribute__((packed));
 
 // Frame header
 #define ID3V2_FRAME_HEADER_TAG_ALTER_BIT  0x40
@@ -114,7 +114,7 @@ struct id3v2_frame_header {
     uint32_t size;                    // synchsafe
     uint8_t status_flags;
     uint8_t format_flags;
-};
+} __attribute__((packed));
 
 // Encodings
 enum id3v2_encoding {
@@ -218,7 +218,7 @@ struct id3v2_frame_UFID {
 struct id3v2_frame_text {
     uint8_t encoding;
     char *text;
-}
+};
 
 struct id3v2_frame_TXXX {
     uint8_t encoding;
@@ -277,7 +277,7 @@ enum id3v2_timestamp_format {
 struct id3v2_ETCO_event {
     uint8_t event_type;
     uint32_t timestamp;
-}
+};
 
 struct id3v2_frame_ETCO {
     uint8_t timestamp_format;

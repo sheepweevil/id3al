@@ -7,6 +7,7 @@
 #ifndef _ID3V2_H
 #define _ID3V2_H
 
+#include <stddef.h>
 #include <stdint.h>
 
 // Used for 3 byte integer values
@@ -464,15 +465,22 @@ struct id3v2_frame_LINK {
 };
 
 // Convert a synchsafe integer to a normal one
-uint32_t from_synchsafe(uint32_t);
+uint32_t from_synchsafe(uint32_t val);
 
 // Convert a normal integer to a synchsafe one
-uint32_t to_synchsafe(uint32_t);
+// The input value must be less than 2^28
+uint32_t to_synchsafe(uint32_t val);
 
-// Return true if a synchronization is detected
-int synchronized(uint32_t);
+// Unsynchronize the given data
+// If no changes are required, outdata will equal data
+// Otherwise, outdata must be freed by the caller
+// Returns 0 if successful, 1 on error
+int unsynchronize(uint8_t *data, size_t len, uint8_t **outdata, size_t *outlen);
 
-// Return true if an unsynchronization is detected
-int unsynchronized(uint32_t);
+// Resynchronize the given data
+// If no changes are required, outdata will equal data
+// Otherwise, outdata must be freed by the caller
+// Returns 0 if successful, 1 on error
+int resynchronize(uint8_t *data, size_t len, uint8_t **outdata, size_t *outlen);
 
 #endif // _ID3V2_H

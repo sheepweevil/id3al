@@ -3,9 +3,14 @@
 
 #include <assert.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include "../id3v2.h"
 
 int main() {
+    uint8_t sync[4];
+    uint8_t *outsync;
+    size_t outlen;
+
     // Check type sizes
     assert(sizeof(uint24_t) == 3);
     assert(sizeof(struct id3v2_header) == 10);
@@ -19,6 +24,43 @@ int main() {
     assert(from_synchsafe(0) == 0);
     assert(to_synchsafe(0x00204080) == 0x01010100);
     assert(from_synchsafe(0x01010100) == 0x00204080);
+
+    // Check unsynchronize/resynchronize
+    sync[0] = 0xFF;
+    sync[1] = 0x0F;
+    sync[2] = 0x00;
+    sync[3] = 0xFF;
+    unsynchronize(sync, sizeof(sync), &outsync, &outlen);
+    assert(outsync == sync);
+    assert(outlen == sizeof(sync));
+
+    sync[0] = 0xFF;
+    sync[1] = 0xF0;
+    sync[2] = 0xFF;
+    sync[3] = 0x00;
+    unsynchronize(sync, sizeof(sync), &outsync, &outlen);
+    assert(outlen == 6);
+    assert(outsync[0] == 0xFF && outsync[1] == 0x00 && outsync[2] == 0xF0 &&
+            outsync[3] == 0xFF && outsync[4] == 0x00 && outsync[5] == 0x00);
+    free(outsync);
+
+    sync[0] = 0x00;
+    sync[1] = 0xFF;
+    sync[2] = 0x01;
+    sync[3] = 0xFF;
+    resynchronize(sync, sizeof(sync), &outsync, &outlen);
+    assert(outsync == sync);
+    assert(outlen == sizeof(sync));
+
+    sync[0] = 0x01;
+    sync[1] = 0xFF;
+    sync[2] = 0x00;
+    sync[3] = 0x01;
+    resynchronize(sync, sizeof(sync), &outsync, &outlen);
+    assert(outlen == 3);
+    assert(outsync[0] == 0x01 && outsync[1] == 0xFF && outsync[2] == 0x01);
+    free(outsync);
+
     printf("Passed!\n");
     return 0;
 }

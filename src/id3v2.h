@@ -474,13 +474,13 @@ uint32_t to_synchsafe(uint32_t val);
 // Unsynchronize the given data
 // If no changes are required, outdata will equal data
 // Otherwise, outdata must be freed by the caller
-// Returns 0 if successful, 1 on error
-int unsynchronize(uint8_t *data, size_t len, uint8_t **outdata, size_t *outlen);
+void unsynchronize(uint8_t *data, size_t len, uint8_t **outdata,
+        size_t *outlen);
 
 // Resynchronize the given data
 // If no changes are required, outdata will equal data
 // Otherwise, outdata must be freed by the caller
-// Returns 0 if successful, 1 on error
-int resynchronize(uint8_t *data, size_t len, uint8_t **outdata, size_t *outlen);
+void resynchronize(uint8_t *data, size_t len, uint8_t **outdata,
+        size_t *outlen);
 
 #endif // _ID3V2_H

@@ -1,6 +1,8 @@
 // Implementation of ID3v2 synchronization
 // Copyright 2015 David Gloe.
 
+#include <assert.h>
+#include <stdlib.h>
 #include "id3v2.h"
 
 // Convert a synchsafe integer to a normal one
@@ -33,12 +35,75 @@ uint32_t to_synchsafe(uint32_t val) {
 // Unsynchronize the given data
 // If no changes are required, outdata will equal data
 // Otherwise, outdata must be freed by the caller
-// Returns 0 if successful, 1 on error
-int unsynchronize(uint8_t *data, size_t len, uint8_t **outdata, size_t *outlen);
+void unsynchronize(uint8_t *data, size_t len, uint8_t **outdata,
+        size_t *outlen) {
+    size_t synchronizations = 0, i, j;
+
+    // A simple two pass algorithm, could possibly be improved
+    for (i = 0; i < len - 1; i++) {
+        if (data[i] == 0xFF &&
+                (data[i+1] == 0x00 || (data[i+1] & 0xE0) == 0xE0)) {
+            synchronizations++;
+        }
+    }
+
+    if (!synchronizations) {
+        *outdata = data;
+        *outlen = len;
+        return;
+    }
+
+    *outdata = malloc(len + synchronizations);
+    if (*outdata == NULL) {
+        *outlen = 0;
+        return;
+    }
+
+    *outlen = len + synchronizations;
+    for (i = 0, j = 0; i < len && j < *outlen; i++, j++) {
+        (*outdata)[j] = data[i];
+        if (i < len - 1 && data[i] == 0xFF &&
+                (data[i+1] == 0x00 || (data[i+1] & 0xE0) == 0xE0)) {
+            j++;
+            (*outdata)[j] = 0;
+        }
+    }
+    assert(i == len && j == *outlen);
+}
 
 // Resynchronize the given data
 // If no changes are required, outdata will equal data
 // Otherwise, outdata must be freed by the caller
-// Returns 0 if successful, 1 on error
-int resynchronize(uint8_t *data, size_t len, uint8_t **outdata, size_t *outlen);
+void resynchronize(uint8_t *data, size_t len, uint8_t **outdata,
+        size_t *outlen) {
+    size_t unsynchronizations = 0, i, j;
+
+    // A simple two pass algorithm, could possibly be improved
+    for (i = 0; i < len - 1; i++) {
+        if (data[i] == 0xFF && data[i+1] == 0x00) {
+            unsynchronizations++;
+        }
+    }
+
+    if (!unsynchronizations) {
+        *outdata = data;
+        *outlen = len;
+        return;
+    }
+
+    *outdata = malloc(len - unsynchronizations);
+    if (*outdata == NULL) {
+        *outlen = 0;
+        return;
+    }
+
+    *outlen = len - unsynchronizations;
+    for (i = 0, j = 0; i < len && j < *outlen; i++, j++) {
+        if (i > 0 && data[i] == 0x00 && data[i-1] == 0xFF) {
+            i++;
+        }
+        (*outdata)[j] = data[i];
+    }
+    assert(i == len && j == *outlen);
+}
 

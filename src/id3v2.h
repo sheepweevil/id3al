@@ -9,6 +9,7 @@
 
 #include <stddef.h>
 #include <stdint.h>
+#include <stdio.h>
 
 // Used for 3 byte integer values
 typedef struct uint24 { uint8_t byte[3]; } uint24_t;
@@ -482,5 +483,24 @@ void unsynchronize(uint8_t *data, size_t len, uint8_t **outdata,
 // Otherwise, outdata must be freed by the caller
 void resynchronize(uint8_t *data, size_t len, uint8_t **outdata,
         size_t *outlen);
+
+// Find and decode the next ID3v2 header in the file
+// Return 0 if successful, 1 otherwise
+int get_id3v2_header(FILE *fp, struct id3v2_header *header);
+
+// Parse the data at the current file position as an ID3v2 extended header
+// The user must free header->flag_data
+// Return 0 if successful, 1 otherwise
+int get_id3v2_extended_header(FILE *fp, struct id3v2_extended_header *header);
+
+// Find and decode the next ID3v2 footer in the file
+// Return 0 if successful, 1 otherwise
+int get_id3v2_footer(FILE *fp, struct id3v2_footer *footer);
+
+// Parse the data at the current file position as an ID3v2 frame
+// The user must free frame_data
+// Return 0 if successful, 1 otherwise
+int get_id3v2_frame(FILE *fp, struct id3v2_frame_header *frame_header,
+        uint8_t **frame_data);
 
 #endif // _ID3V2_H

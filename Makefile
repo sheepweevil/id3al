@@ -5,8 +5,9 @@ CFLAGS=-Wall -Werror
 
 check: src/tests/id3test
 	./src/tests/id3test 
-src/tests/id3test: src/tests/id3test.o src/synchronize.o
+src/tests/id3test: src/tests/id3test.o src/synchronize.o src/decode.o
 src/tests/id3test.o: src/id3v2.h
+src/decode.o: src/id3v2.h
 src/synchronize.o: src/id3v2.h
 
 .PHONY: clean

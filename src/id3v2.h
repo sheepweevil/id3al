@@ -484,23 +484,19 @@ void unsynchronize(uint8_t *data, size_t len, uint8_t **outdata,
 void resynchronize(uint8_t *data, size_t len, uint8_t **outdata,
         size_t *outlen);
 
-// Find and decode the next ID3v2 header in the file
+// Find and decode the next ID3v2 tag in the file
+// If not included, the extended header and footer will be unchanged
+// Caller must free the frame data
 // Return 0 if successful, 1 otherwise
-int get_id3v2_header(FILE *fp, struct id3v2_header *header);
+int get_id3v2_tag(FILE *fp, struct id3v2_header *header,
+        struct id3v2_extended_header *extheader,
+        uint8_t **frame_data, size_t *frame_data_len,
+        struct id3v2_footer *footer);
 
-// Parse the data at the current file position as an ID3v2 extended header
-// The user must free header->flag_data
-// Return 0 if successful, 1 otherwise
-int get_id3v2_extended_header(FILE *fp, struct id3v2_extended_header *header);
-
-// Find and decode the next ID3v2 footer in the file
-// Return 0 if successful, 1 otherwise
-int get_id3v2_footer(FILE *fp, struct id3v2_footer *footer);
-
-// Parse the data at the current file position as an ID3v2 frame
-// The user must free frame_data
-// Return 0 if successful, 1 otherwise
-int get_id3v2_frame(FILE *fp, struct id3v2_frame_header *frame_header,
-        uint8_t **frame_data);
+// Get the next frame from the frame data
+// index should be initialized to zero before the first call, then unmodified
+// Returns 0 if successful, 1 otherwise
+int get_id3v2_frame(uint8_t *frame_data, size_t frame_data_len, size_t *index,
+        struct id3v2_frame_header *header, uint8_t **data);
 
 #endif // _ID3V2_H

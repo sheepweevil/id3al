@@ -465,6 +465,9 @@ struct id3v2_frame_LINK {
     char *additional_data;
 };
 
+// Determine whether a value is synchsafe
+int is_synchsafe(uint32_t val);
+
 // Convert a synchsafe integer to a normal one
 uint32_t from_synchsafe(uint32_t val);
 
@@ -497,6 +500,6 @@ int get_id3v2_tag(FILE *fp, struct id3v2_header *header,
 // index should be initialized to zero before the first call, then unmodified
 // Returns 0 if successful, 1 otherwise
 int get_id3v2_frame(uint8_t *frame_data, size_t frame_data_len, size_t *index,
-        struct id3v2_frame_header *header, uint8_t **data);
+        struct id3v2_frame_header **header, uint8_t **data);
 
 #endif // _ID3V2_H

@@ -5,6 +5,11 @@
 #include <stdlib.h>
 #include "id3v2.h"
 
+// Determine whether an integer is synchsafe or not
+int is_synchsafe(uint32_t val) {
+    return !(val & 0x80808080);
+}
+
 // Convert a synchsafe integer to a normal one
 uint32_t from_synchsafe(uint32_t val) {
     uint32_t ret;

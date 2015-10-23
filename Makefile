@@ -1,7 +1,7 @@
 # Makefile for the id3al project
 # Copyright 2015 David Gloe.
 
-CFLAGS=-Wall -Werror
+CFLAGS=-Wall -Werror -DDEBUG
 
 check: src/tests/id3test
 	./src/tests/id3test 

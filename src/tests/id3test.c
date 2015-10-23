@@ -20,6 +20,8 @@ void check_synchsafe(void) {
     assert(from_synchsafe(0) == 0);
     assert(to_synchsafe(0x00204080) == 0x01010100);
     assert(from_synchsafe(0x01010100) == 0x00204080);
+    assert(is_synchsafe(0x7F7F7F7F));
+    assert(!is_synchsafe(0x80000000));
 }
 
 void check_synchronize(void) {

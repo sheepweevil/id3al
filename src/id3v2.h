@@ -23,6 +23,7 @@ typedef struct uint24 { uint8_t byte[3]; } uint24_t;
 #define ID3V2_HEADER_FOOTER_BIT            0x10
 
 #define ID3V2_HEADER_ID_SIZE 3
+#define ID3V2_SUPPORTED_VERSION 4
 
 struct id3v2_header {
     char     id[ID3V2_HEADER_ID_SIZE]; // not null terminated
@@ -33,6 +34,7 @@ struct id3v2_header {
 } __attribute__((packed));
 
 // Extended header
+#define ID3V2_EXTENDED_HEADER_MIN_SIZE 6
 #define ID3V2_EXTENDED_FLAG_SIZE 0x01
 
 #define ID3V2_EXTENDED_HEADER_UPDATE_BIT           0x40
@@ -491,7 +493,7 @@ void resynchronize(uint8_t *data, size_t len, uint8_t **outdata,
 // If not included, the extended header and footer will be unchanged
 // Caller must free the frame data
 // Return 0 if successful, 1 otherwise
-int get_id3v2_tag(FILE *fp, struct id3v2_header *header,
+int get_id3v2_tag(int fd, struct id3v2_header *header,
         struct id3v2_extended_header *extheader,
         uint8_t **frame_data, size_t *frame_data_len,
         struct id3v2_footer *footer);

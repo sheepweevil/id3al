@@ -4,6 +4,7 @@
 #include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include "../id3v2.h"
 
 void check_type_sizes(void) {
@@ -65,10 +66,82 @@ void check_synchronize(void) {
     free(outsync);
 }
 
+void check_verify(void) {
+    struct id3v2_header header;
+    struct id3v2_extended_header extheader;
+    struct id3v2_footer footer;
+
+    memcpy(header.id, ID3V2_FILE_IDENTIFIER, sizeof(header.id));
+    header.version = 4;
+    header.revision = 0;
+    header.flags = 0xf0;
+    header.tag_size = 0x7f7f7f7f;
+
+    assert(verify_id3v2_header(&header));
+
+    header.id[2] = '4';
+    assert(!verify_id3v2_header(&header));
+    header.id[2] = '3';
+
+    header.version = 5;
+    assert(!verify_id3v2_header(&header));
+    header.version = 4;
+
+    header.flags = 0x0f;
+    assert(!verify_id3v2_header(&header));
+    header.flags = 0xf0;
+
+    header.tag_size = 0x80808080;
+    assert(!verify_id3v2_header(&header));
+
+    extheader.size = 0x7f7f7f7f;
+    extheader.flag_size = 1;
+    extheader.flags = 0x70;
+    extheader.flag_data = NULL;
+
+    assert(verify_id3v2_extended_header(&extheader));
+
+    extheader.size = 0x80808080;
+    assert(!verify_id3v2_extended_header(&extheader));
+    extheader.size = 0x7f7f7f7f;
+
+    extheader.flag_size = 2;
+    assert(!verify_id3v2_extended_header(&extheader));
+    extheader.flag_size = 1;
+
+    extheader.flags = 0x8f;
+    assert(!verify_id3v2_extended_header(&extheader));
+    extheader.flags = 0x70;
+
+    memcpy(footer.id, ID3V2_FOOTER_IDENTIFIER, sizeof(footer.id));
+    footer.version = 4;
+    footer.revision = 0;
+    footer.flags = 0xf0;
+    footer.tag_size = 0x7f7f7f7f;
+
+    assert(verify_id3v2_footer(&footer));
+
+    footer.id[2] = 'H';
+    assert(!verify_id3v2_footer(&footer));
+    footer.id[2] = 'I';
+
+    footer.version = 5;
+    assert(!verify_id3v2_footer(&footer));
+    footer.version = 4;
+
+    footer.flags = 0x0f;
+    assert(!verify_id3v2_footer(&footer));
+    footer.flags = 0xf0;
+
+    footer.tag_size = 0x80808080;
+    assert(!verify_id3v2_footer(&footer));
+}
+
 int main() {
     check_type_sizes();
     check_synchsafe();
     check_synchronize();
+    check_verify();
 
     printf("Passed!\n");
     return 0;

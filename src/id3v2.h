@@ -467,6 +467,14 @@ struct id3v2_frame_LINK {
     char *additional_data;
 };
 
+#if DEBUG
+#define debug(fmt, ...) \
+    fprintf(stderr, "%s:%s:%d " fmt "\n", \
+        __FILE__, __func__, __LINE__, ##__VA_ARGS__);
+#else
+#define debug(fmt, ...)
+#endif
+
 // Determine whether a value is synchsafe
 int is_synchsafe(uint32_t val);
 
@@ -488,6 +496,12 @@ void unsynchronize(uint8_t *data, size_t len, uint8_t **outdata,
 // Otherwise, outdata must be freed by the caller
 void resynchronize(uint8_t *data, size_t len, uint8_t **outdata,
         size_t *outlen);
+
+// Verify functions
+// Check for compliance with spec and return 1 on success
+int verify_id3v2_header(struct id3v2_header *header);
+int verify_id3v2_extended_header(struct id3v2_extended_header *extheader);
+int verify_id3v2_footer(struct id3v2_footer *footer);
 
 // Find and decode the next ID3v2 tag in the file
 // If not included, the extended header and footer will be unchanged

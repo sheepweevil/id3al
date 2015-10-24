@@ -9,14 +9,6 @@
 #include <sys/stat.h>
 #include "id3v2.h"
 
-#if DEBUG
-#define debug(fmt, ...) \
-    fprintf(stderr, "%s:%s:%d " fmt "\n", \
-        __FILE__, __func__, __LINE__, ##__VA_ARGS__);
-#else
-#define debug(fmt, ...)
-#endif
-
 int get_id3v2_tag(int fd, struct id3v2_header *header,
         struct id3v2_extended_header *extheader,
         uint8_t **frame_data, size_t *frame_data_len,
@@ -50,21 +42,14 @@ int get_id3v2_tag(int fd, struct id3v2_header *header,
     for (i = 0; i < st.st_size - len; i++) {
         if (!strncmp(fmap + i, ID3V2_FILE_IDENTIFIER, ID3V2_HEADER_ID_SIZE)) {
             // We've found a header, read it in and check it
-            memcpy(fmap + i, extheader, len);
-            if (header->version > ID3V2_SUPPORTED_VERSION) {
-                debug("Tag version %"PRIu8" higher than supported version %d",
-                        header->version, ID3V2_SUPPORTED_VERSION);
-                continue;
-            } else if (header->flags & 0x0f) {
-                debug("Tag flags %"PRIx8" invalid", header->flags);
-                continue;
-            } else if (!is_synchsafe(header->tag_size)) {
-                debug("Tag size %"PRIx32" not synchsafe", header->tag_size);
-                continue;
-            }
-            found_header = 1;
+            memcpy(header, fmap + i, len);
             i += len;
-            break;
+            if (!verify_id3v2_header(header)) {
+                continue;
+            } else {
+                found_header = 1;
+                break;
+            }
         }
     }
     if (!found_header) {
@@ -81,20 +66,9 @@ int get_id3v2_tag(int fd, struct id3v2_header *header,
             munmap(fmap, st.st_size);
             return 1;
         }
-        memcpy(fmap + i, extheader, len);
+        memcpy(extheader, fmap + i, len);
         i += len;
-        if (!is_synchsafe(extheader->size)) {
-            debug("Extended header size %"PRIx32" not synchsafe",
-                    extheader->size);
-            munmap(fmap, st.st_size);
-            return 1;
-        } else if (extheader->flag_size != ID3V2_EXTENDED_FLAG_SIZE) {
-            debug("Extended header flag size %"PRIu8" should be %d",
-                    extheader->flag_size, ID3V2_EXTENDED_FLAG_SIZE);
-            munmap(fmap, st.st_size);
-            return 1;
-        } else if (extheader->flags & 0x8F) {
-            debug("Extended header flags %"PRIx8" invalid", extheader->flags);
+        if (!verify_id3v2_extended_header(extheader)) {
             munmap(fmap, st.st_size);
             return 1;
         }
@@ -112,7 +86,7 @@ int get_id3v2_tag(int fd, struct id3v2_header *header,
                 munmap(fmap, st.st_size);
                 return 1;
             }
-            memcpy(fmap + i, extheader->flag_data, len);
+            memcpy(extheader->flag_data, fmap + i, len);
             i += len;
         }
     }
@@ -142,7 +116,7 @@ int get_id3v2_tag(int fd, struct id3v2_header *header,
         return 1;
     }
     *frame_data_len = len;
-    memcpy(fmap + i, *frame_data, len);
+    memcpy(*frame_data, fmap + i, len);
     i += len;
 
     // Finally read the footer
@@ -153,26 +127,9 @@ int get_id3v2_tag(int fd, struct id3v2_header *header,
             munmap(fmap, st.st_size);
             return 1;
         }
-        memcpy(fmap + i, footer, len);
+        memcpy(footer, fmap + i, len);
         i += len;
-        if (strncmp(footer->id, ID3V2_FOOTER_IDENTIFIER,
-                    ID3V2_FOOTER_ID_SIZE)) {
-            debug("Footer ID %c%c%c should be %s", footer->id[0],
-                    footer->id[1], footer->id[2],
-                    ID3V2_FOOTER_IDENTIFIER);
-            munmap(fmap, st.st_size);
-            return 1;
-        } else if (footer->version > ID3V2_SUPPORTED_VERSION) {
-            debug("Tag version %"PRIu8" higher than supported version %d",
-                    header->version, ID3V2_SUPPORTED_VERSION);
-            munmap(fmap, st.st_size);
-            return 1;
-        } else if (header->flags & 0x0f) {
-            debug("Tag flags %"PRIx8" invalid", header->flags);
-            munmap(fmap, st.st_size);
-            return 1;
-        } else if (!is_synchsafe(header->tag_size)) {
-            debug("Tag size %"PRIx32" not synchsafe", header->tag_size);
+        if (!verify_id3v2_footer(footer)) {
             munmap(fmap, st.st_size);
             return 1;
         }

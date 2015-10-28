@@ -26,6 +26,8 @@ int verify_id3v2_header(struct id3v2_header *header) {
 }
 
 int verify_id3v2_extended_header(struct id3v2_extended_header *extheader) {
+    size_t i = 0;
+
     if (!is_synchsafe(extheader->size)) {
         debug("Extended header size %"PRIx32" not synchsafe",
                 extheader->size);
@@ -38,6 +40,15 @@ int verify_id3v2_extended_header(struct id3v2_extended_header *extheader) {
         debug("Extended header flags %"PRIx8" invalid", extheader->flags);
         return 0;
     }
+    if (extheader->flags & ID3V2_EXTENDED_HEADER_UPDATE_BIT) {
+        if (extheader->flag_data[i] != 0) {
+            debug("Extended header update length %"PRIu8" not 0",
+                    extheader->flag_data[i]);
+            return 0;
+        }
+        i++;
+    }
+    // TODO: check other flags
     return 1;
 }
 

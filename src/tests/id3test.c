@@ -70,6 +70,7 @@ void check_verify(void) {
     struct id3v2_header header;
     struct id3v2_extended_header extheader;
     struct id3v2_footer footer;
+    uint8_t flag_data[8];
 
     memcpy(header.id, ID3V2_FILE_IDENTIFIER, sizeof(header.id));
     header.version = 4;
@@ -97,7 +98,8 @@ void check_verify(void) {
     extheader.size = 0x7f7f7f7f;
     extheader.flag_size = 1;
     extheader.flags = 0x70;
-    extheader.flag_data = NULL;
+    memset(flag_data, 0, sizeof(flag_data));
+    extheader.flag_data = flag_data;
 
     assert(verify_id3v2_extended_header(&extheader));
 

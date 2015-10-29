@@ -1,12 +1,58 @@
 // Implementation of the id3al command
 // Copyright 2015 David Gloe
 
+#include <assert.h>
+#include <getopt.h>
 #include <inttypes.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include "id3v2.h"
 
+static void print_usage(const char *name, FILE *fp) {
+    fprintf(fp, "Usage: %s [-h] [-v] FILE...\n"
+            "    -h, --help:    Print this message\n"
+            "    -v, --verbose: Print more information\n"
+            "    FILE:          One or more audio files to read\n", name);
+    return;
+}
+
+static void parse_args(int argc, char * const argv[], int *verbosity) {
+    int opt;
+    struct option longopts[] = {
+        {"help", no_argument, NULL, 'h'},
+        {"verbose", no_argument, NULL, 'v'},
+        {NULL, 0, NULL, 0}
+    };
+
+    assert(verbosity);
+
+    *verbosity = 0;
+    while ((opt = getopt_long(argc, argv, "hv", longopts, NULL)) != -1) {
+        switch (opt) {
+            case 'v':
+                (*verbosity)++;
+                break;
+            case 'h':
+                print_usage(argv[0], stdout);
+                exit(0);
+                break;
+            default:
+                print_usage(argv[0], stderr);
+                exit(1);
+                break;
+        }
+    }
+    if (optind >= argc) {
+        print_usage(argv[0], stderr);
+        exit(1);
+    }
+    return;
+}
+
 static void print_id3v2_header(struct id3v2_header *header, int verbosity) {
+    assert(header);
+
     if (verbosity > 0) {
         printf("Tag header: ID %c%c%c version 2.%"PRIu8".%"PRIu8
                 " size %"PRIu32" bytes\n",
@@ -45,6 +91,8 @@ static void print_id3v2_header(struct id3v2_header *header, int verbosity) {
 
 static void print_id3v2_extended_header(struct id3v2_extended_header *eheader,
         int verbosity) {
+    assert(eheader);
+
     size_t i = 0;
     uint32_t crc;
 
@@ -139,23 +187,27 @@ static void print_id3v2_extended_header(struct id3v2_extended_header *eheader,
     }
 }
 
-int main(int argc, const char *argv[]) {
+int main(int argc, char * const argv[]) {
     struct id3v2_header header;
     struct id3v2_extended_header extheader;
     uint8_t flag_data[8];
-    
+    int verbosity;
+
+    parse_args(argc, argv, &verbosity);
+
     memcpy(header.id, ID3V2_FILE_IDENTIFIER, sizeof(header.id));
     header.version = 4;
     header.revision = 0;
     header.flags = 0xf0;
     header.tag_size = 0x7f7f7f7f;
-    
+
     extheader.size = 0x7f7f7f7f;
     extheader.flag_size = 1;
     extheader.flags = 0x70;
     memset(flag_data, 0, sizeof(flag_data));
-   
-    print_id3v2_header(&header, 2);
-    print_id3v2_extended_header(&extheader, 2);
+    extheader.flag_data = flag_data;
+
+    print_id3v2_header(&header, verbosity);
+    print_id3v2_extended_header(&extheader, verbosity);
     return 0;
 }

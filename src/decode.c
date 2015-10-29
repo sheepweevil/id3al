@@ -181,3 +181,25 @@ int get_id3v2_frame(uint8_t *frame_data, size_t frame_data_len, size_t *index,
 
     return 0;
 }
+
+enum id3v2_restriction_tag_size get_tag_size_restriction(uint8_t flags) {
+    return (flags & ID3V2_RESTRICTION_TAG_SIZE_BITS) >> 6;
+}
+
+enum id3v2_restriction_text_encoding get_text_encoding_restriction(
+        uint8_t flags) {
+    return (flags & ID3V2_RESTRICTION_TEXT_ENCODING_BITS) >> 5;
+}
+
+enum id3v2_restriction_text_size get_text_size_restriction(uint8_t flags) {
+    return (flags & ID3V2_RESTRICTION_TEXT_SIZE_BITS) >> 3;
+}
+
+enum id3v2_restriction_image_encoding get_image_encoding_restriction(
+        uint8_t flags) {
+    return (flags & ID3V2_RESTRICTION_IMAGE_ENCODING_BITS) >> 2;
+}
+
+enum id3v2_restriction_image_size get_image_size_restriction(uint8_t flags) {
+    return (flags & ID3V2_RESTRICTION_IMAGE_SIZE_BITS);
+}

@@ -518,4 +518,13 @@ int get_id3v2_tag(int fd, struct id3v2_header *header,
 int get_id3v2_frame(uint8_t *frame_data, size_t frame_data_len, size_t *index,
         struct id3v2_frame_header **header, uint8_t **data);
 
+// Convenience functions for extracting useful information
+enum id3v2_restriction_tag_size get_tag_size_restriction(uint8_t flags);
+enum id3v2_restriction_text_encoding get_text_encoding_restriction(
+        uint8_t flags);
+enum id3v2_restriction_text_size get_text_size_restriction(uint8_t flags);
+enum id3v2_restriction_image_encoding get_image_encoding_restriction(
+        uint8_t flags);
+enum id3v2_restriction_image_size get_image_size_restriction(uint8_t flags);
+
 #endif // _ID3V2_H

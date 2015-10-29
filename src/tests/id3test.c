@@ -139,11 +139,43 @@ void check_verify(void) {
     assert(!verify_id3v2_footer(&footer));
 }
 
+void check_conversion(void) {
+    assert(get_tag_size_restriction(0xFF) == ID3V2_RESTRICTION_TAG_SIZE_4KB3);
+    assert(get_tag_size_restriction(0xBF) == ID3V2_RESTRICTION_TAG_SIZE_40KB);
+    assert(get_tag_size_restriction(0x7F) == ID3V2_RESTRICTION_TAG_SIZE_128KB);
+    assert(get_tag_size_restriction(0x3F) == ID3V2_RESTRICTION_TAG_SIZE_1MB);
+    assert(get_text_encoding_restriction(0x20) ==
+            ID3V2_RESTRICTION_TEXT_ENCODING_BYTE);
+    assert(get_text_encoding_restriction(0x00) ==
+            ID3V2_RESTRICTION_TEXT_ENCODING_NONE);
+    assert(get_text_size_restriction(0x00) ==
+            ID3V2_RESTRICTION_TEXT_SIZE_NONE);
+    assert(get_text_size_restriction(0x08) ==
+            ID3V2_RESTRICTION_TEXT_SIZE_1024);
+    assert(get_text_size_restriction(0x10) ==
+            ID3V2_RESTRICTION_TEXT_SIZE_128);
+    assert(get_text_size_restriction(0x18) ==
+            ID3V2_RESTRICTION_TEXT_SIZE_30);
+    assert(get_image_encoding_restriction(0x00) ==
+            ID3V2_RESTRICTION_IMAGE_ENCODING_NONE);
+    assert(get_image_encoding_restriction(0x04) ==
+            ID3V2_RESTRICTION_IMAGE_ENCODING_COMPRESSED);
+    assert(get_image_size_restriction(0x00) ==
+            ID3V2_RESTRICTION_IMAGE_SIZE_NONE);
+    assert(get_image_size_restriction(0x01) ==
+            ID3V2_RESTRICTION_IMAGE_SIZE_256);
+    assert(get_image_size_restriction(0x02) ==
+            ID3V2_RESTRICTION_IMAGE_SIZE_64);
+    assert(get_image_size_restriction(0x03) ==
+            ID3V2_RESTRICTION_IMAGE_SIZE_64_STRICT);
+}
+
 int main() {
     check_type_sizes();
     check_synchsafe();
     check_synchronize();
     check_verify();
+    check_conversion();
 
     printf("Passed!\n");
     return 0;

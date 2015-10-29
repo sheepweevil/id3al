@@ -51,7 +51,7 @@ enum id3v2_restriction_tag_size {
     ID3V2_RESTRICTION_TAG_SIZE_1MB,   // 128 frames
     ID3V2_RESTRICTION_TAG_SIZE_128KB, // 64 frames
     ID3V2_RESTRICTION_TAG_SIZE_40KB,  // 32 frames
-    ID3V2_RESTRICTION_TAG_SIZE_4KB3   // 32 frames
+    ID3V2_RESTRICTION_TAG_SIZE_4KB    // 32 frames
 };
 
 enum id3v2_restriction_text_encoding {

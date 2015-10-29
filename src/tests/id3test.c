@@ -140,7 +140,7 @@ void check_verify(void) {
 }
 
 void check_conversion(void) {
-    assert(get_tag_size_restriction(0xFF) == ID3V2_RESTRICTION_TAG_SIZE_4KB3);
+    assert(get_tag_size_restriction(0xFF) == ID3V2_RESTRICTION_TAG_SIZE_4KB);
     assert(get_tag_size_restriction(0xBF) == ID3V2_RESTRICTION_TAG_SIZE_40KB);
     assert(get_tag_size_restriction(0x7F) == ID3V2_RESTRICTION_TAG_SIZE_128KB);
     assert(get_tag_size_restriction(0x3F) == ID3V2_RESTRICTION_TAG_SIZE_1MB);

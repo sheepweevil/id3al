@@ -2,6 +2,7 @@
 // Copyright 2015 David Gloe
 
 #include <assert.h>
+#include <fcntl.h>
 #include <getopt.h>
 #include <inttypes.h>
 #include <stdio.h>
@@ -189,25 +190,30 @@ static void print_id3v2_extended_header(struct id3v2_extended_header *eheader,
 
 int main(int argc, char * const argv[]) {
     struct id3v2_header header;
+    struct id3v2_footer footer;
     struct id3v2_extended_header extheader;
-    uint8_t flag_data[8];
-    int verbosity;
+    uint8_t *frame_data;
+    size_t frame_data_len;
+    int verbosity, i, fd;
 
     parse_args(argc, argv, &verbosity);
 
-    memcpy(header.id, ID3V2_FILE_IDENTIFIER, sizeof(header.id));
-    header.version = 4;
-    header.revision = 0;
-    header.flags = 0xf0;
-    header.tag_size = 0x7f7f7f7f;
+    for (i = optind; i <= argc; i++) {
+        fd = open(argv[i], O_RDONLY);
+        if (fd == -1) {
+            fprintf(stderr, "Couldn't open %s: %m", argv[i]);
+            return 1;
+        }
 
-    extheader.size = 0x7f7f7f7f;
-    extheader.flag_size = 1;
-    extheader.flags = 0x70;
-    memset(flag_data, 0, sizeof(flag_data));
-    extheader.flag_data = flag_data;
+        if (get_id3v2_tag(fd, &header, &extheader, &frame_data,
+                    &frame_data_len, &footer)) {
+            return 1;
+        }
 
-    print_id3v2_header(&header, verbosity);
-    print_id3v2_extended_header(&extheader, verbosity);
+        print_id3v2_header(&header, verbosity);
+        if (header.flags & ID3V2_HEADER_EXTENDED_HEADER_BIT) {
+            print_id3v2_extended_header(&extheader, verbosity);
+        }
+    }
     return 0;
 }

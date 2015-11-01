@@ -485,6 +485,9 @@ uint32_t from_synchsafe(uint32_t val);
 // The input value must be less than 2^28
 uint32_t to_synchsafe(uint32_t val);
 
+// Switch endianness of a 32 bit integer
+uint32_t byte_swap_32(uint32_t val);
+
 // Unsynchronize the given data
 // If no changes are required, outdata will equal data
 // Otherwise, outdata must be freed by the caller

@@ -198,10 +198,10 @@ int main(int argc, char * const argv[]) {
 
     parse_args(argc, argv, &verbosity);
 
-    for (i = optind; i <= argc; i++) {
+    for (i = optind; i < argc; i++) {
         fd = open(argv[i], O_RDONLY);
         if (fd == -1) {
-            fprintf(stderr, "Couldn't open %s: %m", argv[i]);
+            fprintf(stderr, "Couldn't open %s: %m\n", argv[i]);
             return 1;
         }
 

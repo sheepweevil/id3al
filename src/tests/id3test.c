@@ -7,14 +7,14 @@
 #include <string.h>
 #include "../id3v2.h"
 
-void check_type_sizes(void) {
+static void check_type_sizes(void) {
     assert(sizeof(uint24_t) == 3);
     assert(sizeof(struct id3v2_header) == 10);
     assert(sizeof(struct id3v2_footer) == 10);
     assert(sizeof(struct id3v2_frame_header) == 10);
 }
 
-void check_synchsafe(void) {
+static void check_synchsafe(void) {
     assert(to_synchsafe(0x0FFFFFFF) == 0x7F7F7F7F);
     assert(from_synchsafe(0x7F7F7F7F) == 0x0FFFFFFF);
     assert(to_synchsafe(0) == 0);
@@ -25,7 +25,11 @@ void check_synchsafe(void) {
     assert(!is_synchsafe(0x80000000));
 }
 
-void check_synchronize(void) {
+static void check_byte_swap(void) {
+    assert(byte_swap_32(0xAABBCCDD) == 0xDDCCBBAA);
+}
+
+static void check_synchronize(void) {
     uint8_t sync[4];
     uint8_t *outsync;
     size_t outlen;
@@ -66,7 +70,7 @@ void check_synchronize(void) {
     free(outsync);
 }
 
-void check_verify(void) {
+static void check_verify(void) {
     struct id3v2_header header;
     struct id3v2_extended_header extheader;
     struct id3v2_footer footer;
@@ -139,7 +143,7 @@ void check_verify(void) {
     assert(!verify_id3v2_footer(&footer));
 }
 
-void check_conversion(void) {
+static void check_conversion(void) {
     assert(get_tag_size_restriction(0xFF) == ID3V2_RESTRICTION_TAG_SIZE_4KB);
     assert(get_tag_size_restriction(0xBF) == ID3V2_RESTRICTION_TAG_SIZE_40KB);
     assert(get_tag_size_restriction(0x7F) == ID3V2_RESTRICTION_TAG_SIZE_128KB);
@@ -173,6 +177,7 @@ void check_conversion(void) {
 int main() {
     check_type_sizes();
     check_synchsafe();
+    check_byte_swap();
     check_synchronize();
     check_verify();
     check_conversion();

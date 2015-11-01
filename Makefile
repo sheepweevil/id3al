@@ -1,7 +1,7 @@
 # Makefile for the id3al project
 # Copyright 2015 David Gloe.
 
-CFLAGS=-Wall -Werror -DDEBUG
+CFLAGS=-Wall -Werror -DDEBUG -g
 
 all: src/id3al
 src/id3al: src/id3al.o src/synchronize.o src/decode.o src/verify.o

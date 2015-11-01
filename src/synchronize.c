@@ -112,3 +112,7 @@ void resynchronize(uint8_t *data, size_t len, uint8_t **outdata,
     assert(i == len && j == *outlen);
 }
 
+uint32_t byte_swap_32(uint32_t val) {
+    return ((val & 0xFF000000) >> 24) + ((val & 0xFF0000) >> 8) +
+        ((val & 0xFF00) << 8) + ((val & 0xFF) << 24);
+}

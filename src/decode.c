@@ -43,6 +43,7 @@ int get_id3v2_tag(int fd, struct id3v2_header *header,
         if (!strncmp(fmap + i, ID3V2_FILE_IDENTIFIER, ID3V2_HEADER_ID_SIZE)) {
             // We've found a header, read it in and check it
             memcpy(header, fmap + i, len);
+            header->tag_size = byte_swap_32(header->tag_size);
             i += len;
             if (!verify_id3v2_header(header)) {
                 continue;
@@ -67,6 +68,7 @@ int get_id3v2_tag(int fd, struct id3v2_header *header,
             return 1;
         }
         memcpy(extheader, fmap + i, len);
+        extheader->size = byte_swap_32(extheader->size);
         i += len;
         if (!verify_id3v2_extended_header(extheader)) {
             munmap(fmap, st.st_size);
@@ -128,6 +130,7 @@ int get_id3v2_tag(int fd, struct id3v2_header *header,
             return 1;
         }
         memcpy(footer, fmap + i, len);
+        footer->tag_size = byte_swap_32(footer->tag_size);
         i += len;
         if (!verify_id3v2_footer(footer)) {
             munmap(fmap, st.st_size);

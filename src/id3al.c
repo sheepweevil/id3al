@@ -10,6 +10,15 @@
 #include <string.h>
 #include "id3v2.h"
 
+#define TITLE_WIDTH 24
+
+static void print_usage(const char *name, FILE *fp);
+static void parse_args(int argc, char * const argv[], int *verbosity);
+static char *boolstr(int b);
+static void print_id3v2_header(struct id3v2_header *header, int verbosity);
+static void print_id3v2_extended_header(struct id3v2_extended_header *eheader,
+        int verbosity);
+
 static void print_usage(const char *name, FILE *fp) {
     fprintf(fp, "Usage: %s [-h] [-v] FILE...\n"
             "    -h, --help:    Print this message\n"
@@ -51,37 +60,32 @@ static void parse_args(int argc, char * const argv[], int *verbosity) {
     return;
 }
 
+static char *boolstr(int b) {
+    if (b) {
+        return "True";
+    }
+    return "False";
+}
+
 static void print_id3v2_header(struct id3v2_header *header, int verbosity) {
     assert(header);
 
     if (verbosity > 0) {
-        printf("Tag header: ID %c%c%c version 2.%"PRIu8".%"PRIu8
-                " size %"PRIu32" bytes\n",
-                header->id[0], header->id[1], header->id[2], header->version,
-                header->revision, from_synchsafe(header->tag_size));
+        printf("%*s: 2.%"PRIu8".%"PRIu8"\n", TITLE_WIDTH, "ID3 Version",
+                header->version, header->revision);
+        printf("%*s: %"PRIu32" bytes\n", TITLE_WIDTH, "Tag Size",
+                from_synchsafe(header->tag_size));
     }
 
     if (verbosity > 1) {
-        if (header->flags & ID3V2_HEADER_UNSYNCHRONIZATION_BIT) {
-            printf("Unsynchronization applied to all frames\n");
-        } else {
-            printf("Unsynchronization not applied to all frames\n");
-        }
-        if (header->flags & ID3V2_HEADER_EXTENDED_HEADER_BIT) {
-            printf("Extended header present\n");
-        } else {
-            printf("Extended header not present\n");
-        }
-        if (header->flags & ID3V2_HEADER_EXPERIMENTAL_BIT) {
-            printf("Tag is in experimental stage\n");
-        } else {
-            printf("Tag is not in experimental stage\n");
-        }
-        if (header->flags & ID3V2_HEADER_FOOTER_BIT) {
-            printf("Footer present\n");
-        } else {
-            printf("Footer not present\n");
-        }
+        printf("%*s: %s\n", TITLE_WIDTH, "Unsynchronization",
+                boolstr(header->flags & ID3V2_HEADER_UNSYNCHRONIZATION_BIT));
+        printf("%*s: %s\n", TITLE_WIDTH, "Extended Header",
+                boolstr(header->flags & ID3V2_HEADER_EXTENDED_HEADER_BIT));
+        printf("%*s: %s\n", TITLE_WIDTH, "Experimental",
+                boolstr(header->flags & ID3V2_HEADER_EXPERIMENTAL_BIT));
+        printf("%*s: %s\n", TITLE_WIDTH, "Footer",
+                boolstr(header->flags & ID3V2_HEADER_FOOTER_BIT));
     }
 
     if (verbosity > 0) {
@@ -98,13 +102,14 @@ static void print_id3v2_extended_header(struct id3v2_extended_header *eheader,
     uint32_t crc;
 
     if (verbosity > 0) {
-        printf("Extended header: size %"PRIu32"\n",
+        printf("%*s: %"PRIu32" bytes\n", TITLE_WIDTH, "Extended Header Size",
                 from_synchsafe(eheader->size));
     }
 
     if (verbosity > 1) {
+        printf("%*s: %s\n", TITLE_WIDTH, "Tag is an Update",
+                boolstr(eheader->flags & ID3V2_EXTENDED_HEADER_UPDATE_BIT));
         if (eheader->flags & ID3V2_EXTENDED_HEADER_UPDATE_BIT) {
-            printf("Tag is an update\n");
             i++;
         }
         if (eheader->flags & ID3V2_EXTENDED_HEADER_CRC_BIT) {
@@ -112,9 +117,10 @@ static void print_id3v2_extended_header(struct id3v2_extended_header *eheader,
             crc = eheader->flag_data[i] << 28;
             i++;
             crc += from_synchsafe(*(uint32_t *)(eheader->flag_data + i));
-            printf("Tag CRC-32: %"PRIu32"\n", crc);
+            printf("%*s: %"PRIx32"\n", TITLE_WIDTH, "CRC-32", crc);
         }
         if (eheader->flags & ID3V2_EXTENDED_HEADER_TAG_RESTRICTIONS_BIT) {
+            printf("%*s: ", TITLE_WIDTH, "Tag Size Restriction");
             i++;
             switch (get_tag_size_restriction(eheader->flag_data[i])) {
                 case ID3V2_RESTRICTION_TAG_SIZE_1MB:
@@ -132,6 +138,7 @@ static void print_id3v2_extended_header(struct id3v2_extended_header *eheader,
                 default:
                     break;
             }
+            printf("%*s: ", TITLE_WIDTH, "Text Restriction");
             switch (get_text_encoding_restriction(eheader->flag_data[i])) {
                 case ID3V2_RESTRICTION_TEXT_ENCODING_NONE:
                     printf("No text encoding restrictions\n");
@@ -142,6 +149,7 @@ static void print_id3v2_extended_header(struct id3v2_extended_header *eheader,
                 default:
                     break;
             }
+            printf("%*s: ", TITLE_WIDTH, "Text Size Restriction");
             switch (get_text_size_restriction(eheader->flag_data[i])) {
                 case ID3V2_RESTRICTION_TEXT_SIZE_NONE:
                     printf("No text size restrictions\n");
@@ -158,6 +166,7 @@ static void print_id3v2_extended_header(struct id3v2_extended_header *eheader,
                 default:
                     break;
             }
+            printf("%*s: ", TITLE_WIDTH, "Image Restriction");
             switch (get_image_encoding_restriction(eheader->flag_data[i])) {
                 case ID3V2_RESTRICTION_IMAGE_ENCODING_NONE:
                     printf("No image encoding restrictions\n");
@@ -168,6 +177,7 @@ static void print_id3v2_extended_header(struct id3v2_extended_header *eheader,
                 default:
                     break;
             }
+            printf("%*s: ", TITLE_WIDTH, "Image Size Restriction");
             switch(get_image_size_restriction(eheader->flag_data[i])) {
                 case ID3V2_RESTRICTION_IMAGE_SIZE_NONE:
                     printf("No image size restrictions\n");

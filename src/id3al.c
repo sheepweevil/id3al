@@ -18,6 +18,8 @@ static char *boolstr(int b);
 static void print_id3v2_header(struct id3v2_header *header, int verbosity);
 static void print_id3v2_extended_header(struct id3v2_extended_header *eheader,
         int verbosity);
+static void print_id3v2_frame_header(struct id3v2_frame_header *fheader,
+        int verbosity);
 
 static void print_usage(const char *name, FILE *fp) {
     fprintf(fp, "Usage: %s [-h] [-v] FILE...\n"
@@ -198,6 +200,44 @@ static void print_id3v2_extended_header(struct id3v2_extended_header *eheader,
     }
 }
 
+static void print_id3v2_frame_header(struct id3v2_frame_header *fheader,
+        int verbosity) {
+    if (verbosity > 0) {
+        printf("%*s: %.*s\n", TITLE_WIDTH, "Frame ID", ID3V2_FRAME_ID_SIZE,
+                fheader->id);
+        printf("%*s: %"PRIu32" bytes\n", TITLE_WIDTH, "Frame Size",
+                from_synchsafe(byte_swap_32(fheader->size)));
+    }
+
+    if (verbosity > 1) {
+        printf("%*s: %s\n", TITLE_WIDTH, "Tag Alter Discard",
+                boolstr(fheader->status_flags &
+                    ID3V2_FRAME_HEADER_TAG_ALTER_BIT));
+        printf("%*s: %s\n", TITLE_WIDTH, "File Alter Discard",
+                boolstr(fheader->status_flags &
+                    ID3V2_FRAME_HEADER_FILE_ALTER_BIT));
+        printf("%*s: %s\n", TITLE_WIDTH, "Read Only",
+                boolstr(fheader->status_flags &
+                    ID3V2_FRAME_HEADER_READ_ONLY_BIT));
+
+        printf("%*s: %s\n", TITLE_WIDTH, "Group Information",
+                boolstr(fheader->format_flags &
+                    ID3V2_FRAME_HEADER_GROUPING_BIT));
+        printf("%*s: %s\n", TITLE_WIDTH, "Compression",
+                boolstr(fheader->format_flags &
+                    ID3V2_FRAME_HEADER_COMPRESSION_BIT));
+        printf("%*s: %s\n", TITLE_WIDTH, "Encryption",
+                boolstr(fheader->format_flags &
+                    ID3V2_FRAME_HEADER_ENCRYPTION_BIT));
+        printf("%*s: %s\n", TITLE_WIDTH, "Unsynchronization",
+                boolstr(fheader->format_flags &
+                    ID3V2_FRAME_HEADER_UNSYNCHRONIZATION_BIT));
+        printf("%*s: %s\n", TITLE_WIDTH, "Data Length Indicator",
+                boolstr(fheader->format_flags &
+                    ID3V2_FRAME_HEADER_DATA_LENGTH_BIT));
+    }
+}
+
 int main(int argc, char * const argv[]) {
     struct id3v2_header header;
     struct id3v2_footer footer;
@@ -224,6 +264,9 @@ int main(int argc, char * const argv[]) {
         if (header.flags & ID3V2_HEADER_EXTENDED_HEADER_BIT) {
             print_id3v2_extended_header(&extheader, verbosity);
         }
+
+        print_id3v2_frame_header((struct id3v2_frame_header *)frame_data,
+                verbosity);
     }
     return 0;
 }

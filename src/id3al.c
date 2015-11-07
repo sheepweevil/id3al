@@ -238,6 +238,20 @@ static void print_id3v2_frame_header(struct id3v2_frame_header *fheader,
     }
 }
 
+void print_id3v2_frames(struct id3v2_header *header,
+        struct id3v2_extended_header *eheader, uint8_t *frame_data,
+        size_t frame_data_len, int verbosity) {
+    struct id3v2_frame_header *fheader;
+    int i = 0;
+
+    while (i < frame_data_len) {
+        fheader = (struct id3v2_frame_header *)(frame_data + i);
+        print_id3v2_frame_header(fheader, verbosity);
+        i += from_synchsafe(byte_swap_32(fheader->size)) +
+            sizeof(struct id3v2_frame_header);
+    }
+}
+
 int main(int argc, char * const argv[]) {
     struct id3v2_header header;
     struct id3v2_footer footer;
@@ -265,7 +279,8 @@ int main(int argc, char * const argv[]) {
             print_id3v2_extended_header(&extheader, verbosity);
         }
 
-        print_id3v2_frame_header((struct id3v2_frame_header *)frame_data,
+
+        print_id3v2_frames(&header, &extheader, frame_data, frame_data_len,
                 verbosity);
     }
     return 0;

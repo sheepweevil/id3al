@@ -206,7 +206,7 @@ static void print_id3v2_frame_header(struct id3v2_frame_header *fheader,
         printf("%*s: %.*s\n", TITLE_WIDTH, "Frame ID", ID3V2_FRAME_ID_SIZE,
                 fheader->id);
         printf("%*s: %"PRIu32" bytes\n", TITLE_WIDTH, "Frame Size",
-                from_synchsafe(byte_swap_32(fheader->size)));
+                fheader->size);
     }
 
     if (verbosity > 1) {
@@ -242,13 +242,12 @@ void print_id3v2_frames(struct id3v2_header *header,
         struct id3v2_extended_header *eheader, uint8_t *frame_data,
         size_t frame_data_len, int verbosity) {
     struct id3v2_frame_header *fheader;
-    int i = 0;
+    uint8_t *fdata;
+    size_t i = 0;
 
-    while (i < frame_data_len) {
-        fheader = (struct id3v2_frame_header *)(frame_data + i);
+    while (!get_id3v2_frame(header, frame_data, frame_data_len, &i, &fheader,
+                &fdata)) {
         print_id3v2_frame_header(fheader, verbosity);
-        i += from_synchsafe(byte_swap_32(fheader->size)) +
-            sizeof(struct id3v2_frame_header);
     }
 }
 
@@ -278,7 +277,6 @@ int main(int argc, char * const argv[]) {
         if (header.flags & ID3V2_HEADER_EXTENDED_HEADER_BIT) {
             print_id3v2_extended_header(&extheader, verbosity);
         }
-
 
         print_id3v2_frames(&header, &extheader, frame_data, frame_data_len,
                 verbosity);

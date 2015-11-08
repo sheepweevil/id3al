@@ -141,10 +141,10 @@ int get_id3v2_tag(int fd, struct id3v2_header *header,
     return 0;
 }
 
-int get_id3v2_frame(uint8_t *frame_data, size_t frame_data_len, size_t *index,
+int get_id3v2_frame(struct id3v2_header *idheader, uint8_t *frame_data,
+        size_t frame_data_len, size_t *index,
         struct id3v2_frame_header **header, uint8_t **data) {
     struct id3v2_frame_header *headerp;
-    uint32_t data_len;
 
     assert(frame_data);
     assert(index);
@@ -154,14 +154,25 @@ int get_id3v2_frame(uint8_t *frame_data, size_t frame_data_len, size_t *index,
     // We've reached the end of the tag
     if (*index + sizeof(struct id3v2_frame_header) > frame_data_len) {
         return 1;
+    } else if (*(frame_data + *index) == 0) {
+        // We've found padding
+        return 1;
     }
 
     // Validate the frame header
     headerp = (struct id3v2_frame_header *)(frame_data + *index);
-    if (!is_synchsafe(headerp->size)) {
-        debug("Frame size %"PRIx32" not synchsafe", headerp->size);
-        return 1;
-    } if (headerp->status_flags & 0x8F) {
+    headerp->size = byte_swap_32(headerp->size);
+
+    // Size doesn't need to be synchsafe in 2.3
+    if (idheader->version == 4) {
+        if (!is_synchsafe(headerp->size)) {
+            debug("Frame size %"PRIx32" not synchsafe", headerp->size);
+            return 1;
+        } else {
+            headerp->size = from_synchsafe(headerp->size);
+        }
+    }
+    if (headerp->status_flags & 0x8F) {
         debug("Frame status flags %"PRIx8" invalid", headerp->status_flags);
         return 1;
     } else if (headerp->format_flags & 0x0B) {
@@ -171,16 +182,15 @@ int get_id3v2_frame(uint8_t *frame_data, size_t frame_data_len, size_t *index,
     *index += sizeof(struct id3v2_frame_header);
 
     // Make sure the data fits
-    data_len = from_synchsafe(headerp->size);
-    if (*index + data_len > frame_data_len) {
+    if (*index + headerp->size > frame_data_len) {
         debug("Index %zu tag data %"PRIu32" overflows frame %zu",
-                *index, data_len, frame_data_len);
+                *index, headerp->size, frame_data_len);
         return 1;
     }
 
     *header = headerp;
     *data = frame_data + *index;
-    *index += from_synchsafe(headerp->size);
+    *index += headerp->size;
 
     return 0;
 }

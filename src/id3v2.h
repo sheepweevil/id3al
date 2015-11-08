@@ -518,7 +518,8 @@ int get_id3v2_tag(int fd, struct id3v2_header *header,
 // Get the next frame from the frame data
 // index should be initialized to zero before the first call, then unmodified
 // Returns 0 if successful, 1 otherwise
-int get_id3v2_frame(uint8_t *frame_data, size_t frame_data_len, size_t *index,
+int get_id3v2_frame(struct id3v2_header *idheader, uint8_t *frame_data,
+        size_t frame_data_len, size_t *index,
         struct id3v2_frame_header **header, uint8_t **data);
 
 // Convenience functions for extracting useful information

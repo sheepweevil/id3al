@@ -20,6 +20,8 @@ static void print_id3v2_extended_header(struct id3v2_extended_header *eheader,
         int verbosity);
 static void print_id3v2_frame_header(struct id3v2_frame_header *fheader,
         int verbosity);
+static void print_id3v2_frame(struct id3v2_frame_header *header,
+        uint8_t *fdata, int verbosity);
 
 static void print_usage(const char *name, FILE *fp) {
     fprintf(fp, "Usage: %s [-h] [-v] FILE...\n"
@@ -119,7 +121,7 @@ static void print_id3v2_extended_header(struct id3v2_extended_header *eheader,
             crc = eheader->flag_data[i] << 28;
             i++;
             crc += from_synchsafe(*(uint32_t *)(eheader->flag_data + i));
-            printf("%*s: %"PRIx32"\n", TITLE_WIDTH, "CRC-32", crc);
+            printf("%*s: 0x%"PRIx32"\n", TITLE_WIDTH, "CRC-32", crc);
         }
         if (eheader->flags & ID3V2_EXTENDED_HEADER_TAG_RESTRICTIONS_BIT) {
             printf("%*s: ", TITLE_WIDTH, "Tag Size Restriction");
@@ -238,7 +240,29 @@ static void print_id3v2_frame_header(struct id3v2_frame_header *fheader,
     }
 }
 
-void print_id3v2_frames(struct id3v2_header *header,
+static void print_id3v2_frame(struct id3v2_frame_header *header,
+        uint8_t *fdata, int verbosity) {
+    size_t index = 0;
+
+    if (header->format_flags & ID3V2_FRAME_HEADER_GROUPING_BIT) {
+        if (verbosity > 0) {
+            printf("%*s: %"PRIu8"\n", TITLE_WIDTH, "Grouping Identifier",
+                    *fdata);
+        }
+        index++;
+    }
+    if (header->format_flags & ID3V2_FRAME_HEADER_DATA_LENGTH_BIT) {
+        if (verbosity > 0) {
+            printf("%*s: %"PRIu32"\n", TITLE_WIDTH, "Data Length",
+                    from_synchsafe(byte_swap_32(*(uint32_t *)(fdata + index))));
+        }
+        index++;
+    }
+
+    // TODO: support compression, encryption, unsynchronization
+}
+
+static void print_id3v2_frames(struct id3v2_header *header,
         struct id3v2_extended_header *eheader, uint8_t *frame_data,
         size_t frame_data_len, int verbosity) {
     struct id3v2_frame_header *fheader;
@@ -248,6 +272,7 @@ void print_id3v2_frames(struct id3v2_header *header,
     while (!get_id3v2_frame(header, frame_data, frame_data_len, &i, &fheader,
                 &fdata)) {
         print_id3v2_frame_header(fheader, verbosity);
+        print_id3v2_frame(fheader, fdata, verbosity);
     }
 }
 

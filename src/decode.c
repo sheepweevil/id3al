@@ -70,7 +70,7 @@ int get_id3v2_tag(int fd, struct id3v2_header *header,
         memcpy(extheader, fmap + i, len);
         extheader->size = byte_swap_32(extheader->size);
         i += len;
-        if (!verify_id3v2_extended_header(extheader)) {
+        if (!verify_id3v2_extended_header(header, extheader)) {
             munmap(fmap, st.st_size);
             return 1;
         }
@@ -162,21 +162,11 @@ int get_id3v2_frame(struct id3v2_header *idheader, uint8_t *frame_data,
     // Validate the frame header
     headerp = (struct id3v2_frame_header *)(frame_data + *index);
     headerp->size = byte_swap_32(headerp->size);
-
-    // Size doesn't need to be synchsafe in 2.3
-    if (idheader->version == 4) {
-        if (!is_synchsafe(headerp->size)) {
-            debug("Frame size %"PRIx32" not synchsafe", headerp->size);
-            return 1;
-        } else {
-            headerp->size = from_synchsafe(headerp->size);
-        }
+    // Size isn't synchsafe in 2.3
+    if (idheader->version > 3) {
+        headerp->size = from_synchsafe(headerp->size);
     }
-    if (headerp->status_flags & 0x8F) {
-        debug("Frame status flags %"PRIx8" invalid", headerp->status_flags);
-        return 1;
-    } else if (headerp->format_flags & 0x0B) {
-        debug("Frame format flags %"PRIx8" invalid", headerp->format_flags);
+    if (!verify_id3v2_frame_header(idheader, headerp)) {
         return 1;
     }
     *index += sizeof(struct id3v2_frame_header);

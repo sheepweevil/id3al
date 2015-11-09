@@ -7,29 +7,29 @@
 
 int verify_id3v2_header(struct id3v2_header *header) {
     if (strncmp(header->id, ID3V2_FILE_IDENTIFIER, ID3V2_HEADER_ID_SIZE)) {
-        debug("Tag ID %c%c%c should be %s",
-                header->id[0], header->id[1], header->id[2],
-                ID3V2_FILE_IDENTIFIER);
+        debug("Tag ID %.*s should be %s",
+                ID3V2_HEADER_ID_SIZE, header->id, ID3V2_FILE_IDENTIFIER);
         return 0;
     } else if (header->version > ID3V2_SUPPORTED_VERSION) {
         debug("Tag version %"PRIu8" higher than supported version %d",
                 header->version, ID3V2_SUPPORTED_VERSION);
         return 0;
     } else if (header->flags & 0x0f) {
-        debug("Tag flags %"PRIx8" invalid", header->flags);
+        debug("Tag flags 0x%"PRIx8" invalid", header->flags);
         return 0;
-    } else if (!is_synchsafe(header->tag_size)) {
-        debug("Tag size %"PRIx32" not synchsafe", header->tag_size);
+    } else if (header->version > 3 && !is_synchsafe(header->tag_size)) {
+        debug("Tag size 0x%"PRIx32" not synchsafe", header->tag_size);
         return 0;
     }
     return 1;
 }
 
-int verify_id3v2_extended_header(struct id3v2_extended_header *extheader) {
+int verify_id3v2_extended_header(struct id3v2_header *header,
+        struct id3v2_extended_header *extheader) {
     size_t i = 0;
 
-    if (!is_synchsafe(extheader->size)) {
-        debug("Extended header size %"PRIx32" not synchsafe",
+    if (header->version > 3 && !is_synchsafe(extheader->size)) {
+        debug("Extended header size 0x%"PRIx32" not synchsafe",
                 extheader->size);
         return 0;
     } else if (extheader->flag_size != ID3V2_EXTENDED_FLAG_SIZE) {
@@ -37,7 +37,7 @@ int verify_id3v2_extended_header(struct id3v2_extended_header *extheader) {
                 extheader->flag_size, ID3V2_EXTENDED_FLAG_SIZE);
         return 0;
     } else if (extheader->flags & 0x8F) {
-        debug("Extended header flags %"PRIx8" invalid", extheader->flags);
+        debug("Extended header flags 0x%"PRIx8" invalid", extheader->flags);
         return 0;
     }
     if (extheader->flags & ID3V2_EXTENDED_HEADER_UPDATE_BIT) {
@@ -49,6 +49,24 @@ int verify_id3v2_extended_header(struct id3v2_extended_header *extheader) {
         i++;
     }
     // TODO: check other flags
+    return 1;
+}
+
+int verify_id3v2_frame_header(struct id3v2_header *header,
+        struct id3v2_frame_header *fheader) {
+    if (header->version > 3 && !is_synchsafe(fheader->size)) {
+        debug("Frame %.*s size 0x%"PRIx32" not synchsafe",
+                ID3V2_FRAME_ID_SIZE, fheader->id, fheader->size);
+        return 0;
+    } else if (fheader->status_flags & 0x8f) {
+        debug("Frame %.*s status flags 0x%"PRIx8" invalid",
+                ID3V2_FRAME_ID_SIZE, fheader->id, fheader->status_flags);
+        return 0;
+    } else if (fheader->format_flags & 0xb0) {
+        debug("Frame %.*s format flags 0x%"PRIx8" invalid",
+                ID3V2_FRAME_ID_SIZE, fheader->id, fheader->format_flags);
+        return 0;
+    }
     return 1;
 }
 
@@ -64,10 +82,10 @@ int verify_id3v2_footer(struct id3v2_footer *footer) {
                 footer->version, ID3V2_SUPPORTED_VERSION);
         return 0;
     } else if (footer->flags & 0x0f) {
-        debug("Footer flags %"PRIx8" invalid", footer->flags);
+        debug("Footer flags 0x%"PRIx8" invalid", footer->flags);
         return 0;
-    } else if (!is_synchsafe(footer->tag_size)) {
-        debug("Footer size %"PRIx32" not synchsafe", footer->tag_size);
+    } else if (footer->version > 3 && !is_synchsafe(footer->tag_size)) {
+        debug("Footer size 0x%"PRIx32" not synchsafe", footer->tag_size);
         return 0;
     }
     return 1;

@@ -525,6 +525,13 @@ int get_id3v2_frame(struct id3v2_header *idheader, uint8_t *frame_data,
         size_t frame_data_len, size_t *index,
         struct id3v2_frame_header **header, uint8_t **data);
 
+// Parse frame data
+int parse_UFID_frame(uint8_t *fdata, struct id3v2_frame_UFID *frame);
+int parse_text_frame(uint8_t *fdata, struct id3v2_frame_text *frame);
+int parse_TXXX_frame(uint8_t *fdata, struct id3v2_frame_TXXX *frame);
+int parse_url_frame(uint8_t *fdata, struct id3v2_frame_url *frame);
+int parse_WXXX_frame(uint8_t *fdata, struct id3v2_frame_WXXX *frame);
+
 // Convenience functions for extracting useful information
 enum id3v2_restriction_tag_size get_tag_size_restriction(uint8_t flags);
 enum id3v2_restriction_text_encoding get_text_encoding_restriction(

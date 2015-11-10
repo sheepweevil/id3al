@@ -206,3 +206,37 @@ enum id3v2_restriction_image_encoding get_image_encoding_restriction(
 enum id3v2_restriction_image_size get_image_size_restriction(uint8_t flags) {
     return (flags & ID3V2_RESTRICTION_IMAGE_SIZE_BITS);
 }
+
+int parse_UFID_frame(uint8_t *fdata, struct id3v2_frame_UFID *frame) {
+    frame->owner = (char *)fdata;
+    frame->id = fdata + strlen(frame->owner) + 1;
+    return 1;
+}
+
+// Parse frames T000-TZZZ, excluding TXXX
+int parse_text_frame(uint8_t *fdata, struct id3v2_frame_text *frame) {
+    frame->encoding = *fdata;
+    frame->text = (char *)(fdata + 1);
+    return 1;
+}
+
+int parse_TXXX_frame(uint8_t *fdata, struct id3v2_frame_TXXX *frame) {
+    frame->encoding = *fdata;
+    frame->description = (char *)(fdata + 1);
+    frame->value = (char *)(fdata + 1 + strlen(frame->description));
+    return 1;
+}
+
+// Parse frames W000-WZZZ, excluding WXXX
+int parse_url_frame(uint8_t *fdata, struct id3v2_frame_url *frame) {
+    frame->url = (char *)fdata;
+    return 1;
+}
+
+int parse_WXXX_frame(uint8_t *fdata, struct id3v2_frame_WXXX *frame) {
+    frame->encoding = *fdata;
+    frame->description = (char *)(fdata + 1);
+    frame->url = (char *)(fdata + 1 + strlen(frame->description));
+    return 1;
+}
+

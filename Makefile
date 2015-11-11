@@ -1,7 +1,8 @@
 # Makefile for the id3al project
 # Copyright 2015 David Gloe.
 
-CFLAGS=-Wall -Werror -DDEBUG -g
+CFLAGS=-Wall -Werror -DDEBUG -g `pkg-config --cflags icu-uc icu-io`
+LDLIBS=`pkg-config --libs icu-uc icu-io`
 
 all: src/id3al
 src/id3al: src/id3al.o src/synchronize.o src/decode.o src/verify.o

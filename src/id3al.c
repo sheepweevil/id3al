@@ -8,6 +8,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include "unicode/ustdio.h"
+#include "unicode/ustring.h"
 #include "id3v2.h"
 
 #define TITLE_WIDTH 24
@@ -365,7 +367,7 @@ static const char *frame_title(struct id3v2_frame_header *fheader) {
             return titles[i];
         }
     }
-    return "Unknown";
+    return "Unknown Tag";
 }
 
 static void print_UFID_frame(struct id3v2_frame_header *fheader,
@@ -402,6 +404,8 @@ static void print_text_frame(struct id3v2_frame_header *fheader,
         uint8_t *fdata, int verbosity) {
     const char *title = frame_title(fheader);
     struct id3v2_frame_text frame;
+    UChar *text;
+    UErrorCode uerr;
 
     parse_text_frame(fdata, &frame);
     if (verbosity > 0) {
@@ -409,7 +413,43 @@ static void print_text_frame(struct id3v2_frame_header *fheader,
                 SUBTITLE_WIDTH, "Encoding",
                 encoding_str(frame.encoding));
     }
-    printf("%*s: %s\n", TITLE_WIDTH, title, frame.text);
+    switch (frame.encoding) {
+        case ID3V2_ENCODING_UTF_16:
+        case ID3V2_ENCODING_UTF_16BE:
+            // Add a null terminator before printing
+            text = malloc(fheader->size + 1);
+            if (text == NULL) {
+                debug("malloc %"PRIu32" failed: %m", fheader->size * 2);
+                break;
+            }
+            memcpy(text, frame.text, fheader->size - 1);
+            text[fheader->size] = 0;
+            text[fheader->size - 1] = 0;
+            u_printf("%*s: %S\n", TITLE_WIDTH, title, text);
+            free(text);
+            break;
+        case ID3V2_ENCODING_UTF_8:
+            // Must convert to UTF-16 before printing
+            text = malloc(fheader->size * 2);
+            if (text == NULL) {
+                debug("malloc %"PRIu32" failed: %m", fheader->size * 2);
+                break;
+            }
+            u_strFromUTF8(text, fheader->size * 2, NULL, frame.text,
+                    fheader->size - 1, &uerr);
+            if (U_FAILURE(uerr)) {
+                debug("Conversion from UTF-8 failed: %s", u_errorName(uerr));
+                free(text);
+                break;
+            }
+            u_printf("%*s: %S\n", TITLE_WIDTH, title, text);
+            free(text);
+            break;
+        default:
+            printf("%*s: %.*s\n", TITLE_WIDTH, title, fheader->size - 1,
+                    frame.text);
+            break;
+    }
 }
 
 static void print_TXXX_frame(uint8_t *fdata) {
@@ -459,6 +499,9 @@ static void print_id3v2_frame(struct id3v2_frame_header *header,
     } else {
         printf("Support for frame %.*s not implemented yet\n",
                 ID3V2_FRAME_ID_SIZE, header->id);
+    }
+    if (verbosity > 0) {
+        printf("\n");
     }
 }
 

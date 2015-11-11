@@ -400,12 +400,75 @@ static char *encoding_str(enum id3v2_encoding enc) {
     return "Unknown";
 }
 
+// Print the string with the given encoding. len should be -1 for NULL
+// terminated strings and the string length in bytes otherwise.
+// Returns the number of bytes printed on success, -1 otherwise.
+static int print_enc(const char *str, int len, enum id3v2_encoding enc) {
+    UChar *text;
+    UErrorCode uerr;
+    int ret;
+    int32_t textlen;
+
+    switch (enc) {
+        case ID3V2_ENCODING_UTF_16:
+        case ID3V2_ENCODING_UTF_16BE:
+            if (len == -1) {
+                text = (UChar *)str;
+            } else {
+                text = malloc(len + 2);
+                if (text == NULL) {
+                    debug("malloc %d failed: %m", len + 2);
+                    return -1;
+                }
+                memcpy(text, str, len);
+                text[len + 1] = 0;
+                text[len] = 0;
+            }
+            ret = u_printf("%S", text);
+            if (len != -1) {
+                free(text);
+            }
+            break;
+        case ID3V2_ENCODING_UTF_8:
+            // Must convert to UTF-16 before printing
+            if (len == -1) {
+                textlen = strlen(str) * 2 + 2;
+            } else {
+                text = malloc(len * 2 + 2);
+                if (text == NULL) {
+                    debug("malloc %d failed: %m", len * 2 + 2);
+                    return -1;
+                }
+            }
+            text = malloc(textlen);
+            if (text == NULL) {
+                debug("malloc %"PRId32" failed: %m", textlen);
+                return -1;
+            }
+            u_strFromUTF8(text, textlen, NULL, str, len, &uerr);
+            if (U_FAILURE(uerr)) {
+                debug("Conversion from UTF-8 failed: %s", u_errorName(uerr));
+                free(text);
+                return -1;
+            }
+            ret = u_printf("%S", text);
+            free(text);
+            break;
+        default:
+            if (len == -1) {
+                ret = printf("%s", str);
+            } else {
+                ret = printf("%.*s", len, str);
+            }
+            break;
+    }
+    return ret;
+}
+
 static void print_text_frame(struct id3v2_frame_header *fheader,
         uint8_t *fdata, int verbosity) {
     const char *title = frame_title(fheader);
     struct id3v2_frame_text frame;
-    UChar *text;
-    UErrorCode uerr;
 
     parse_text_frame(fdata, &frame);
     if (verbosity > 0) {
@@ -413,43 +476,9 @@ static void print_text_frame(struct id3v2_frame_header *fheader,
                 SUBTITLE_WIDTH, "Encoding",
                 encoding_str(frame.encoding));
     }
-    switch (frame.encoding) {
-        case ID3V2_ENCODING_UTF_16:
-        case ID3V2_ENCODING_UTF_16BE:
-            // Add a null terminator before printing
-            text = malloc(fheader->size + 1);
-            if (text == NULL) {
-                debug("malloc %"PRIu32" failed: %m", fheader->size * 2);
-                break;
-            }
-            memcpy(text, frame.text, fheader->size - 1);
-            text[fheader->size] = 0;
-            text[fheader->size - 1] = 0;
-            u_printf("%*s: %S\n", TITLE_WIDTH, title, text);
-            free(text);
-            break;
-        case ID3V2_ENCODING_UTF_8:
-            // Must convert to UTF-16 before printing
-            text = malloc(fheader->size * 2);
-            if (text == NULL) {
-                debug("malloc %"PRIu32" failed: %m", fheader->size * 2);
-                break;
-            }
-            u_strFromUTF8(text, fheader->size * 2, NULL, frame.text,
-                    fheader->size - 1, &uerr);
-            if (U_FAILURE(uerr)) {
-                debug("Conversion from UTF-8 failed: %s", u_errorName(uerr));
-                free(text);
-                break;
-            }
-            u_printf("%*s: %S\n", TITLE_WIDTH, title, text);
-            free(text);
-            break;
-        default:
-            printf("%*s: %.*s\n", TITLE_WIDTH, title, fheader->size - 1,
-                    frame.text);
-            break;
-    }
+    printf("%*s: ", TITLE_WIDTH, title);
+    print_enc(frame.text, fheader->size - 1, frame.encoding);
+    printf("\n");
 }
 
 static void print_TXXX_frame(uint8_t *fdata) {

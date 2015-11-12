@@ -13,20 +13,29 @@
 #include "id3v2.h"
 
 #define TITLE_WIDTH 24
-#define SUBTITLE_WIDTH 10
 
 static void print_usage(const char *name, FILE *fp);
 static void parse_args(int argc, char * const argv[], int *verbosity);
-static char *boolstr(int b);
 static void print_id3v2_header(struct id3v2_header *header, int verbosity);
 static void print_id3v2_extended_header(struct id3v2_extended_header *eheader,
         int verbosity);
 static void print_id3v2_frame_header(struct id3v2_frame_header *fheader,
         int verbosity);
+static int print_enc(const char *str, int len, enum id3v2_encoding enc);
+static void print_UFID_frame(struct id3v2_frame_header *fheader,
+        uint8_t *fdata);
+static void print_text_frame(struct id3v2_frame_header *fheader,
+        uint8_t *fdata, int verbosity);
+static void print_TXXX_frame(uint8_t *fdata);
+static void print_url_frame(uint8_t *fdata);
+static void print_WXXX_frame(uint8_t *fdata);
 static void print_id3v2_frame(struct id3v2_frame_header *header,
         uint8_t *fdata, int verbosity);
-static const char *frame_title(struct id3v2_frame_header *fheader);
+static void print_id3v2_frames(struct id3v2_header *header,
+        struct id3v2_extended_header *eheader, uint8_t *frame_data,
+        size_t frame_data_len, int verbosity);
 
+// Print usage information to stdout
 static void print_usage(const char *name, FILE *fp) {
     fprintf(fp, "Usage: %s [-h] [-v] FILE...\n"
             "    -h, --help:    Print this message\n"
@@ -35,6 +44,7 @@ static void print_usage(const char *name, FILE *fp) {
     return;
 }
 
+// Parse arguments
 static void parse_args(int argc, char * const argv[], int *verbosity) {
     int opt;
     struct option longopts[] = {
@@ -68,13 +78,7 @@ static void parse_args(int argc, char * const argv[], int *verbosity) {
     return;
 }
 
-static char *boolstr(int b) {
-    if (b) {
-        return "True";
-    }
-    return "False";
-}
-
+// Print an id3v2 header
 static void print_id3v2_header(struct id3v2_header *header, int verbosity) {
     assert(header);
 
@@ -102,6 +106,7 @@ static void print_id3v2_header(struct id3v2_header *header, int verbosity) {
     return;
 }
 
+// Print an id3v2 extended header
 static void print_id3v2_extended_header(struct id3v2_extended_header *eheader,
         int verbosity) {
     assert(eheader);
@@ -128,86 +133,31 @@ static void print_id3v2_extended_header(struct id3v2_extended_header *eheader,
             printf("%*s: 0x%"PRIx32"\n", TITLE_WIDTH, "CRC-32", crc);
         }
         if (eheader->flags & ID3V2_EXTENDED_HEADER_TAG_RESTRICTIONS_BIT) {
-            printf("%*s: ", TITLE_WIDTH, "Tag Size Restriction");
             i++;
-            switch (get_tag_size_restriction(eheader->flag_data[i])) {
-                case ID3V2_RESTRICTION_TAG_SIZE_1MB:
-                    printf("No more than 128 frames and 1MB tag size\n");
-                    break;
-                case ID3V2_RESTRICTION_TAG_SIZE_128KB:
-                    printf("No more than 64 frames and 128KB tag size\n");
-                    break;
-                case ID3V2_RESTRICTION_TAG_SIZE_40KB:
-                    printf("No more than 32 frames and 40KB tag size\n");
-                    break;
-                case ID3V2_RESTRICTION_TAG_SIZE_4KB:
-                    printf("No more than 32 frames and 4KB tag size\n");
-                    break;
-                default:
-                    break;
-            }
-            printf("%*s: ", TITLE_WIDTH, "Text Restriction");
-            switch (get_text_encoding_restriction(eheader->flag_data[i])) {
-                case ID3V2_RESTRICTION_TEXT_ENCODING_NONE:
-                    printf("No text encoding restrictions\n");
-                    break;
-                case ID3V2_RESTRICTION_TEXT_ENCODING_BYTE:
-                    printf("Text encoded with ISO-8859-1 or UTF-8\n");
-                    break;
-                default:
-                    break;
-            }
-            printf("%*s: ", TITLE_WIDTH, "Text Size Restriction");
-            switch (get_text_size_restriction(eheader->flag_data[i])) {
-                case ID3V2_RESTRICTION_TEXT_SIZE_NONE:
-                    printf("No text size restrictions\n");
-                    break;
-                case ID3V2_RESTRICTION_TEXT_SIZE_1024:
-                    printf("No string is longer than 1024 characters\n");
-                    break;
-                case ID3V2_RESTRICTION_TEXT_SIZE_128:
-                    printf("No string is longer than 128 characters\n");
-                    break;
-                case ID3V2_RESTRICTION_TEXT_SIZE_30:
-                    printf("No string is longer than 30 characters\n");
-                    break;
-                default:
-                    break;
-            }
-            printf("%*s: ", TITLE_WIDTH, "Image Restriction");
-            switch (get_image_encoding_restriction(eheader->flag_data[i])) {
-                case ID3V2_RESTRICTION_IMAGE_ENCODING_NONE:
-                    printf("No image encoding restrictions\n");
-                    break;
-                case ID3V2_RESTRICTION_IMAGE_ENCODING_COMPRESSED:
-                    printf("Images encoded with PNG or JPEG\n");
-                    break;
-                default:
-                    break;
-            }
-            printf("%*s: ", TITLE_WIDTH, "Image Size Restriction");
-            switch(get_image_size_restriction(eheader->flag_data[i])) {
-                case ID3V2_RESTRICTION_IMAGE_SIZE_NONE:
-                    printf("No image size restrictions\n");
-                    break;
-                case ID3V2_RESTRICTION_IMAGE_SIZE_256:
-                    printf("All images are 256x256 pixels or smaller\n");
-                    break;
-                case ID3V2_RESTRICTION_IMAGE_SIZE_64:
-                    printf("All images are 64x64 pixels or smaller\n");
-                    break;
-                case ID3V2_RESTRICTION_IMAGE_SIZE_64_STRICT:
-                    printf("All images are exactly 64x64 pixels\n");
-                    break;
-                default:
-                    break;
-            }
+            printf("%*s: %s\n", TITLE_WIDTH, "Tag Size Restriction",
+                    tag_size_restrict_str(get_tag_size_restriction(
+                            eheader->flag_data[i])));
+            printf("%*s: %s\n", TITLE_WIDTH, "Text Restriction",
+                    text_enc_restrict_str(get_text_encoding_restriction(
+                            eheader->flag_data[i])));
+            printf("%*s: %s\n", TITLE_WIDTH, "Text Size Restriction",
+                    text_size_restrict_str(get_text_size_restriction(
+                            eheader->flag_data[i])));
+            printf("%*s: %s\n", TITLE_WIDTH, "Image Restriction",
+                    img_enc_restrict_str(get_image_encoding_restriction(
+                            eheader->flag_data[i])));
+            printf("%*s: %s\n", TITLE_WIDTH, "Image Size Restriction",
+                    img_size_restrict_str(get_image_size_restriction(
+                            eheader->flag_data[i])));
         }
     }
 }
 
+// Print an id3v2 frame header
 static void print_id3v2_frame_header(struct id3v2_frame_header *fheader,
         int verbosity) {
+    assert(fheader);
+
     if (verbosity > 0) {
         printf("%*s: %.*s\n", TITLE_WIDTH, "Frame ID", ID3V2_FRAME_ID_SIZE,
                 fheader->id);
@@ -244,162 +194,6 @@ static void print_id3v2_frame_header(struct id3v2_frame_header *fheader,
     }
 }
 
-static const char *frame_title(struct id3v2_frame_header *fheader) {
-    static const char *frames[] = {
-        ID3V2_FRAME_ID_AENC, ID3V2_FRAME_ID_APIC, ID3V2_FRAME_ID_ASPI,
-        ID3V2_FRAME_ID_COMM, ID3V2_FRAME_ID_COMR, ID3V2_FRAME_ID_ENCR,
-        ID3V2_FRAME_ID_EQU2, ID3V2_FRAME_ID_ETCO, ID3V2_FRAME_ID_GEOB,
-        ID3V2_FRAME_ID_GRID, ID3V2_FRAME_ID_LINK, ID3V2_FRAME_ID_MCDI,
-        ID3V2_FRAME_ID_MLLT, ID3V2_FRAME_ID_OWNE, ID3V2_FRAME_ID_PRIV,
-        ID3V2_FRAME_ID_PCNT, ID3V2_FRAME_ID_POPM, ID3V2_FRAME_ID_POSS,
-        ID3V2_FRAME_ID_RBUF, ID3V2_FRAME_ID_RVA2, ID3V2_FRAME_ID_RVRB,
-        ID3V2_FRAME_ID_SEEK, ID3V2_FRAME_ID_SIGN, ID3V2_FRAME_ID_SYLT,
-        ID3V2_FRAME_ID_SYTC, ID3V2_FRAME_ID_TALB, ID3V2_FRAME_ID_TBPM,
-        ID3V2_FRAME_ID_TCOM, ID3V2_FRAME_ID_TCON, ID3V2_FRAME_ID_TCOP,
-        ID3V2_FRAME_ID_TDEN, ID3V2_FRAME_ID_TDLY, ID3V2_FRAME_ID_TDOR,
-        ID3V2_FRAME_ID_TDRC, ID3V2_FRAME_ID_TDRL, ID3V2_FRAME_ID_TDTG,
-        ID3V2_FRAME_ID_TENC, ID3V2_FRAME_ID_TEXT, ID3V2_FRAME_ID_TFLT,
-        ID3V2_FRAME_ID_TIPL, ID3V2_FRAME_ID_TIT1, ID3V2_FRAME_ID_TIT2,
-        ID3V2_FRAME_ID_TIT3, ID3V2_FRAME_ID_TKEY, ID3V2_FRAME_ID_TLAN,
-        ID3V2_FRAME_ID_TLEN, ID3V2_FRAME_ID_TMCL, ID3V2_FRAME_ID_TMED,
-        ID3V2_FRAME_ID_TMOO, ID3V2_FRAME_ID_TOAL, ID3V2_FRAME_ID_TOFN,
-        ID3V2_FRAME_ID_TOLY, ID3V2_FRAME_ID_TOPE, ID3V2_FRAME_ID_TOWN,
-        ID3V2_FRAME_ID_TPE1, ID3V2_FRAME_ID_TPE2, ID3V2_FRAME_ID_TPE3,
-        ID3V2_FRAME_ID_TPE4, ID3V2_FRAME_ID_TPOS, ID3V2_FRAME_ID_TPRO,
-        ID3V2_FRAME_ID_TPUB, ID3V2_FRAME_ID_TRCK, ID3V2_FRAME_ID_TRSN,
-        ID3V2_FRAME_ID_TRSO, ID3V2_FRAME_ID_TSOA, ID3V2_FRAME_ID_TSOP,
-        ID3V2_FRAME_ID_TSOT, ID3V2_FRAME_ID_TSRC, ID3V2_FRAME_ID_TSSE,
-        ID3V2_FRAME_ID_TSST, ID3V2_FRAME_ID_TXXX, ID3V2_FRAME_ID_UFID,
-        ID3V2_FRAME_ID_USER, ID3V2_FRAME_ID_USLT, ID3V2_FRAME_ID_WCOM,
-        ID3V2_FRAME_ID_WCOP, ID3V2_FRAME_ID_WOAF, ID3V2_FRAME_ID_WOAR,
-        ID3V2_FRAME_ID_WOAS, ID3V2_FRAME_ID_WORS, ID3V2_FRAME_ID_WPAY,
-        ID3V2_FRAME_ID_WPUB, ID3V2_FRAME_ID_WXXX
-    };
-    static const char *titles[] = {
-        "Audio Encryption",
-        "Attached Picture",
-        "Audio Seek Point Index",
-        "Comments",
-        "Commercial Info",
-        "Encryption Method",
-        "Equalization",
-        "Event Timing",
-        "Encapsulated Object",
-        "Group Identification",
-        "Linked Info",
-        "Music CD",
-        "MPEG Lookup Table",
-        "Ownership",
-        "Private",
-        "Play Counter",
-        "Popularimeter",
-        "Position Sync",
-        "Recommended Buffer Size",
-        "Relative Volume Adjust",
-        "Reverb",
-        "Seek",
-        "Signature",
-        "Synchronized Lyrics",
-        "Synchronized Tempo",
-        "Album Title",
-        "BPM",
-        "Composer",
-        "Content Type",
-        "Copyright",
-        "Encoding Time",
-        "Playlist Delay",
-        "Original Release Time",
-        "Recording Time",
-        "Release Time",
-        "Tagging Time",
-        "Encoded By",
-        "Lyricist",
-        "File Type",
-        "Involved People",
-        "Content Group",
-        "Title",
-        "Subtitle",
-        "Initial Key",
-        "Language",
-        "Length",
-        "Musician Credits List",
-        "Media Type",
-        "Mood",
-        "Original Album Title",
-        "Original Filename",
-        "Original Lyricist",
-        "Original Artist",
-        "File Owner",
-        "Lead Performer",
-        "Accompaniment",
-        "Conductor",
-        "Interpreted By",
-        "Part of a Set",
-        "Produced Notice",
-        "Publisher",
-        "Track Number",
-        "Radio Station Name",
-        "Radio Station Owner",
-        "Album Sort Order",
-        "Performer Sort Order",
-        "Title Sort Order",
-        "ISRC Code",
-        "Encoding Settings",
-        "Set Subtitle",
-        "Text Info",
-        "Unique File ID",
-        "Terms of Use",
-        "Lyrics",
-        "Commercial Webpage",
-        "Copyright Webpage",
-        "Audio Webpage",
-        "Artist Webpage",
-        "Audio Source Webpage",
-        "Radio Station Webpage",
-        "Payment Webpage",
-        "Publisher Webpage",
-        "Webpage"
-    };
-    size_t i;
-
-    for (i = 0; i < sizeof(frames) / sizeof(const char *); i++) {
-        if (!strncmp(fheader->id, frames[i], ID3V2_FRAME_ID_SIZE)) {
-            return titles[i];
-        }
-    }
-    return "Unknown Tag";
-}
-
-static void print_UFID_frame(struct id3v2_frame_header *fheader,
-        uint8_t *fdata) {
-    struct id3v2_frame_UFID frame;
-    size_t i;
-
-    parse_UFID_frame(fdata, &frame);
-    printf("%*s: %s\n", TITLE_WIDTH, "Unique File ID Owner", frame.owner);
-    printf("%*s: ", TITLE_WIDTH, "Unique File ID");
-    for (i = 0; i < fheader->size - strlen(frame.owner) - 1; i++) {
-        printf("%"PRIx8" ", frame.id[i]);
-    }
-    printf("\n");
-}
-
-static char *encoding_str(enum id3v2_encoding enc) {
-    switch (enc) {
-        case ID3V2_ENCODING_ISO_8859_1:
-            return "ISO 8859-1";
-        case ID3V2_ENCODING_UTF_16:
-            return "UTF-16 with BOM";
-        case ID3V2_ENCODING_UTF_16BE:
-            return "UTF-16 without BOM";
-        case ID3V2_ENCODING_UTF_8:
-            return "UTF-8";
-        default:
-            break;
-    }
-    return "Unknown";
-}
-
 // Print the string with the given encoding. len should be -1 for NULL
 // terminated strings and the string length in bytes otherwise.
 // Returns the number of bytes printed on success, -1 otherwise.
@@ -408,6 +202,8 @@ static int print_enc(const char *str, int len, enum id3v2_encoding enc) {
     UErrorCode uerr;
     int ret;
     int32_t textlen;
+
+    assert(str);
 
     switch (enc) {
         case ID3V2_ENCODING_UTF_16:
@@ -465,6 +261,24 @@ static int print_enc(const char *str, int len, enum id3v2_encoding enc) {
     return ret;
 }
 
+// Print a UFID frame
+static void print_UFID_frame(struct id3v2_frame_header *fheader,
+        uint8_t *fdata) {
+    struct id3v2_frame_UFID frame;
+    size_t i;
+    const char *title;
+
+    parse_UFID_frame(fdata, &frame);
+    title = frame_title(fheader);
+    printf("%*s: %s - %s\n", TITLE_WIDTH, title, "Owner", frame.owner);
+    printf("%*s: ", TITLE_WIDTH, title);
+    for (i = 0; i < fheader->size - strlen(frame.owner) - 1; i++) {
+        printf("%"PRIx8" ", frame.id[i]);
+    }
+    printf("\n");
+}
+
+// Print any text frame except TXXX
 static void print_text_frame(struct id3v2_frame_header *fheader,
         uint8_t *fdata, int verbosity) {
     const char *title = frame_title(fheader);
@@ -472,8 +286,7 @@ static void print_text_frame(struct id3v2_frame_header *fheader,
 
     parse_text_frame(fdata, &frame);
     if (verbosity > 0) {
-        printf("%*s: %*s: %s\n", TITLE_WIDTH, title,
-                SUBTITLE_WIDTH, "Encoding",
+        printf("%*s: %s - %s\n", TITLE_WIDTH, title, "Encoding",
                 encoding_str(frame.encoding));
     }
     printf("%*s: ", TITLE_WIDTH, title);
@@ -481,18 +294,22 @@ static void print_text_frame(struct id3v2_frame_header *fheader,
     printf("\n");
 }
 
+// Print a TXXX frame (not implemented yet)
 static void print_TXXX_frame(uint8_t *fdata) {
 
 }
 
+// Print any URL frame except WXXX (not implemented yet)
 static void print_url_frame(uint8_t *fdata) {
 
 }
 
+// Print a WXXX frame (not implemented yet)
 static void print_WXXX_frame(uint8_t *fdata) {
 
 }
 
+// Print an id3v2 frame
 static void print_id3v2_frame(struct id3v2_frame_header *header,
         uint8_t *fdata, int verbosity) {
     size_t index = 0;
@@ -534,6 +351,7 @@ static void print_id3v2_frame(struct id3v2_frame_header *header,
     }
 }
 
+// Print all frames in a tag
 static void print_id3v2_frames(struct id3v2_header *header,
         struct id3v2_extended_header *eheader, uint8_t *frame_data,
         size_t frame_data_len, int verbosity) {
@@ -548,6 +366,7 @@ static void print_id3v2_frames(struct id3v2_header *header,
     }
 }
 
+// Main function
 int main(int argc, char * const argv[]) {
     struct id3v2_header header;
     struct id3v2_footer footer;

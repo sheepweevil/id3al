@@ -541,4 +541,20 @@ enum id3v2_restriction_image_encoding get_image_encoding_restriction(
         uint8_t flags);
 enum id3v2_restriction_image_size get_image_size_restriction(uint8_t flags);
 
+// Describe various constants
+const char *boolstr(int b);
+const char *frame_title(struct id3v2_frame_header *fheader);
+const char *encoding_str(enum id3v2_encoding enc);
+const char *tag_size_restrict_str(enum id3v2_restriction_tag_size res);
+const char *text_enc_restrict_str(enum id3v2_restriction_text_encoding res);
+const char *text_size_restrict_str(enum id3v2_restriction_text_size res);
+const char *img_enc_restrict_str(enum id3v2_restriction_image_encoding res);
+const char *img_size_restrict_str(enum id3v2_restriction_image_size res);
+const char *timestamp_fmt_str(enum id3v2_timestamp_format time_fmt);
+const char *event_str(uint8_t event_type);
+const char *sync_text_str(enum id3v2_SYLT_text text_type);
+const char *channel_str(enum id3v2_RVA2_channel_type channel);
+const char *interp_str(enum id3v2_EQU2_interpolation_method interp);
+const char *pic_type_str(enum id3v2_APIC_picture_type pic_type);
+
 #endif // _ID3V2_H

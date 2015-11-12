@@ -5,13 +5,16 @@ CFLAGS=-Wall -Werror -DDEBUG -g `pkg-config --cflags icu-uc icu-io`
 LDLIBS=`pkg-config --libs icu-uc icu-io`
 
 all: src/id3al
-src/id3al: src/id3al.o src/synchronize.o src/decode.o src/verify.o
-src/id3al.o: src/id3v2.h
 
 check: src/tests/id3test
 	./src/tests/id3test 
+
+src/id3al: src/id3al.o src/convert.o src/decode.o src/synchronize.o src/verify.o
 src/tests/id3test: src/tests/id3test.o src/synchronize.o src/decode.o src/verify.o
+
 src/tests/id3test.o: src/id3v2.h
+src/id3al.o: src/id3v2.h
+src/convert.o: src/id3v2.h
 src/decode.o: src/id3v2.h
 src/synchronize.o: src/id3v2.h
 src/verify.o: src/id3v2.h

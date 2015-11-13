@@ -37,51 +37,22 @@ uint32_t to_synchsafe(uint32_t val) {
     return ret;
 }
 
-// Unsynchronize the given data
-// If no changes are required, outdata will equal data
-// Otherwise, outdata must be freed by the caller
-void unsynchronize(uint8_t *data, size_t len, uint8_t **outdata,
-        size_t *outlen) {
-    size_t synchronizations = 0, i, j;
+// Determine the data length if it was unsynchronized
+size_t unsync_len(const uint8_t *data, size_t len) {
+    size_t synchronizations = 0, i;
 
-    // A simple two pass algorithm, could possibly be improved
     for (i = 0; i < len - 1; i++) {
         if (data[i] == 0xFF &&
                 (data[i+1] == 0x00 || (data[i+1] & 0xE0) == 0xE0)) {
             synchronizations++;
         }
     }
-
-    if (!synchronizations) {
-        *outdata = data;
-        *outlen = len;
-        return;
-    }
-
-    *outdata = malloc(len + synchronizations);
-    if (*outdata == NULL) {
-        *outlen = 0;
-        return;
-    }
-
-    *outlen = len + synchronizations;
-    for (i = 0, j = 0; i < len && j < *outlen; i++, j++) {
-        (*outdata)[j] = data[i];
-        if (i < len - 1 && data[i] == 0xFF &&
-                (data[i+1] == 0x00 || (data[i+1] & 0xE0) == 0xE0)) {
-            j++;
-            (*outdata)[j] = 0;
-        }
-    }
-    assert(i == len && j == *outlen);
+    return len + synchronizations;
 }
 
-// Resynchronize the given data
-// If no changes are required, outdata will equal data
-// Otherwise, outdata must be freed by the caller
-void resynchronize(uint8_t *data, size_t len, uint8_t **outdata,
-        size_t *outlen) {
-    size_t unsynchronizations = 0, i, j;
+// Determine the data length if it was resynchronized
+size_t resync_len(const uint8_t *data, size_t len) {
+    size_t unsynchronizations = 0, i;
 
     // A simple two pass algorithm, could possibly be improved
     for (i = 0; i < len - 1; i++) {
@@ -89,27 +60,35 @@ void resynchronize(uint8_t *data, size_t len, uint8_t **outdata,
             unsynchronizations++;
         }
     }
+    return len - unsynchronizations;
+}
 
-    if (!unsynchronizations) {
-        *outdata = data;
-        *outlen = len;
-        return;
+// Unsynchronize the given data
+// outdata must be at least unsync_len(data, len) bytes
+void unsynchronize(const uint8_t *data, size_t len, uint8_t *outdata) {
+    size_t i, j;
+
+    for (i = 0, j = 0; i < len; i++, j++) {
+        outdata[j] = data[i];
+        if (i < len - 1 && data[i] == 0xFF &&
+                (data[i+1] == 0x00 || (data[i+1] & 0xE0) == 0xE0)) {
+            j++;
+            outdata[j] = 0;
+        }
     }
+}
 
-    *outdata = malloc(len - unsynchronizations);
-    if (*outdata == NULL) {
-        *outlen = 0;
-        return;
-    }
+// Resynchronize the given data
+// outdata must be at least resync_len(data, len) bytes
+void resynchronize(const uint8_t *data, size_t len, uint8_t *outdata) {
+    size_t i, j;
 
-    *outlen = len - unsynchronizations;
-    for (i = 0, j = 0; i < len && j < *outlen; i++, j++) {
+    for (i = 0, j = 0; i < len; i++, j++) {
         if (i > 0 && data[i] == 0x00 && data[i-1] == 0xFF) {
             i++;
         }
-        (*outdata)[j] = data[i];
+        outdata[j] = data[i];
     }
-    assert(i == len && j == *outlen);
 }
 
 uint32_t byte_swap_32(uint32_t val) {

@@ -31,43 +31,40 @@ static void check_byte_swap(void) {
 
 static void check_synchronize(void) {
     uint8_t sync[4];
-    uint8_t *outsync;
-    size_t outlen;
+    uint8_t outsync[6];
 
     sync[0] = 0xFF;
     sync[1] = 0x0F;
     sync[2] = 0x00;
     sync[3] = 0xFF;
-    unsynchronize(sync, sizeof(sync), &outsync, &outlen);
-    assert(outsync == sync);
-    assert(outlen == sizeof(sync));
+    assert(unsync_len(sync, sizeof(sync)) == sizeof(sync));
+    unsynchronize(sync, sizeof(sync), outsync);
+    assert(!memcmp(sync, outsync, sizeof(sync)));
 
     sync[0] = 0xFF;
     sync[1] = 0xF0;
     sync[2] = 0xFF;
     sync[3] = 0x00;
-    unsynchronize(sync, sizeof(sync), &outsync, &outlen);
-    assert(outlen == 6);
+    assert(unsync_len(sync, sizeof(sync)) == 6);
+    unsynchronize(sync, sizeof(sync), outsync);
     assert(outsync[0] == 0xFF && outsync[1] == 0x00 && outsync[2] == 0xF0 &&
             outsync[3] == 0xFF && outsync[4] == 0x00 && outsync[5] == 0x00);
-    free(outsync);
 
     sync[0] = 0x00;
     sync[1] = 0xFF;
     sync[2] = 0x01;
     sync[3] = 0xFF;
-    resynchronize(sync, sizeof(sync), &outsync, &outlen);
-    assert(outsync == sync);
-    assert(outlen == sizeof(sync));
+    assert(resync_len(sync, sizeof(sync)) == sizeof(sync));
+    resynchronize(sync, sizeof(sync), outsync);
+    assert(!memcmp(sync, outsync, sizeof(sync)));
 
     sync[0] = 0x01;
     sync[1] = 0xFF;
     sync[2] = 0x00;
     sync[3] = 0x01;
-    resynchronize(sync, sizeof(sync), &outsync, &outlen);
-    assert(outlen == 3);
+    assert(resync_len(sync, sizeof(sync)) == 3);
+    resynchronize(sync, sizeof(sync), outsync);
     assert(outsync[0] == 0x01 && outsync[1] == 0xFF && outsync[2] == 0x01);
-    free(outsync);
 }
 
 static void check_verify(void) {

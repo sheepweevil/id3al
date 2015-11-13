@@ -488,17 +488,19 @@ uint32_t to_synchsafe(uint32_t val);
 // Switch endianness of a 32 bit integer
 uint32_t byte_swap_32(uint32_t val);
 
+// Determine the data length if it was unsynchronized
+size_t unsync_len(const uint8_t *data, size_t len);
+
+// Determine the data length if it was resynchronized
+size_t resync_len(const uint8_t *data, size_t len);
+
 // Unsynchronize the given data
-// If no changes are required, outdata will equal data
-// Otherwise, outdata must be freed by the caller
-void unsynchronize(uint8_t *data, size_t len, uint8_t **outdata,
-        size_t *outlen);
+// outdata must be at least unsync_len(data, len) bytes
+void unsynchronize(const uint8_t *data, size_t len, uint8_t *outdata);
 
 // Resynchronize the given data
-// If no changes are required, outdata will equal data
-// Otherwise, outdata must be freed by the caller
-void resynchronize(uint8_t *data, size_t len, uint8_t **outdata,
-        size_t *outlen);
+// outdata must be at least resync_len(data, len) bytes
+void resynchronize(const uint8_t *data, size_t len, uint8_t *outdata);
 
 // Verify functions
 // Check for compliance with spec and return 1 on success

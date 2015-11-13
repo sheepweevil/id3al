@@ -26,9 +26,12 @@ static void print_UFID_frame(struct id3v2_frame_header *fheader,
         uint8_t *fdata);
 static void print_text_frame(struct id3v2_frame_header *fheader,
         uint8_t *fdata, int verbosity);
-static void print_TXXX_frame(uint8_t *fdata);
-static void print_url_frame(uint8_t *fdata);
-static void print_WXXX_frame(uint8_t *fdata);
+static void print_TXXX_frame(struct id3v2_frame_header *fheader,
+        uint8_t *fdata, int verbosity);
+static void print_url_frame(struct id3v2_frame_header *fheader,
+        uint8_t *fdata, int verbosity);
+static void print_WXXX_frame(struct id3v2_frame_header *fheader,
+        uint8_t *fdata, int verbosity);
 static void print_id3v2_frame(struct id3v2_frame_header *header,
         uint8_t *fdata, int verbosity);
 static void print_id3v2_frames(struct id3v2_header *header,
@@ -261,6 +264,19 @@ static int print_enc(const char *str, int len, enum id3v2_encoding enc) {
     return ret;
 }
 
+// Get the length of a terminated encoded string in bytes,
+// including the terminator.
+static size_t strlen_enc(const char *str, enum id3v2_encoding enc) {
+    switch (enc) {
+        case ID3V2_ENCODING_UTF_16:
+        case ID3V2_ENCODING_UTF_16BE:
+            return u_strlen((UChar *)str) * sizeof(UChar) + sizeof(UChar);
+        default:
+            break;
+    }
+    return strlen(str) + 1;
+}
+
 // Print a UFID frame
 static void print_UFID_frame(struct id3v2_frame_header *fheader,
         uint8_t *fdata) {
@@ -294,19 +310,52 @@ static void print_text_frame(struct id3v2_frame_header *fheader,
     printf("\n");
 }
 
-// Print a TXXX frame (not implemented yet)
-static void print_TXXX_frame(uint8_t *fdata) {
+// Print a TXXX frame
+static void print_TXXX_frame(struct id3v2_frame_header *fheader,
+        uint8_t *fdata, int verbosity) {
+    const char *title = frame_title(fheader);
+    struct id3v2_frame_TXXX frame;
 
+    parse_TXXX_frame(fdata, &frame);
+    if (verbosity > 0) {
+        printf("%*s: %s - %s\n", TITLE_WIDTH, title, "Encoding",
+                encoding_str(frame.encoding));
+    }
+    printf("%*s: %s - ", TITLE_WIDTH, title, "Description");
+    print_enc(frame.description, -1, frame.encoding);
+    printf("\n");
+    printf("%*s: %s - ", TITLE_WIDTH, title, "Value");
+    print_enc(frame.value,
+            fheader->size - strlen_enc(frame.description, frame.encoding) - 1,
+            frame.encoding);
+    printf("\n");
 }
 
-// Print any URL frame except WXXX (not implemented yet)
-static void print_url_frame(uint8_t *fdata) {
-
+// Print any URL frame except WXXX
+static void print_url_frame(struct id3v2_frame_header *fheader,
+        uint8_t *fdata, int verbosity) {
+    printf("%*s: %.*s\n", TITLE_WIDTH, frame_title(fheader), fheader->size,
+            (char *)fdata);
 }
 
-// Print a WXXX frame (not implemented yet)
-static void print_WXXX_frame(uint8_t *fdata) {
+// Print a WXXX frame
+static void print_WXXX_frame(struct id3v2_frame_header *fheader,
+        uint8_t *fdata, int verbosity) {
+    const char *title = frame_title(fheader);
+    struct id3v2_frame_WXXX frame;
 
+    parse_WXXX_frame(fdata, &frame);
+    if (verbosity > 0) {
+        printf("%*s: %s - %s\n", TITLE_WIDTH, title, "Encoding",
+                encoding_str(frame.encoding));
+    }
+    printf("%*s: %s - ", TITLE_WIDTH, title, "Description");
+    print_enc(frame.description, -1, frame.encoding);
+    printf("\n");
+    printf("%*s: %s - %.*s\n", TITLE_WIDTH, title, "URL",
+            (int)(fheader->size -
+                strlen_enc(frame.description, frame.encoding) - 1),
+            frame.url);
 }
 
 // Print an id3v2 frame
@@ -334,14 +383,14 @@ static void print_id3v2_frame(struct id3v2_frame_header *header,
         print_UFID_frame(header, fdata);
     } else if (!strncmp(header->id, ID3V2_FRAME_ID_TXXX,
                 ID3V2_FRAME_ID_SIZE)) {
-        print_TXXX_frame(fdata);
+        print_TXXX_frame(header, fdata, verbosity);
     } else if (header->id[0] == 'T') {
         print_text_frame(header, fdata, verbosity);
     } else if (!strncmp(header->id, ID3V2_FRAME_ID_WXXX,
                 ID3V2_FRAME_ID_SIZE)) {
-        print_WXXX_frame(fdata);
+        print_WXXX_frame(header, fdata, verbosity);
     } else if (header->id[0] == 'W') {
-        print_url_frame(fdata);
+        print_url_frame(header, fdata, verbosity);
     } else {
         printf("Support for frame %.*s not implemented yet\n",
                 ID3V2_FRAME_ID_SIZE, header->id);

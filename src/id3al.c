@@ -214,14 +214,13 @@ static int print_enc(const char *str, int len, enum id3v2_encoding enc) {
             if (len == -1) {
                 text = (UChar *)str;
             } else {
-                text = malloc(len + 2);
+                text = malloc(len + sizeof(UChar));
                 if (text == NULL) {
                     debug("malloc %d failed: %m", len + 2);
                     return -1;
                 }
                 memcpy(text, str, len);
-                text[len + 1] = 0;
-                text[len] = 0;
+                text[len / sizeof(UChar)] = 0;
             }
             ret = u_printf("%S", text);
             if (len != -1) {
@@ -420,7 +419,7 @@ int main(int argc, char * const argv[]) {
     struct id3v2_header header;
     struct id3v2_footer footer;
     struct id3v2_extended_header extheader;
-    uint8_t *frame_data;
+    uint8_t *frame_data = NULL;
     size_t frame_data_len;
     int verbosity, i, fd;
 
@@ -446,5 +445,6 @@ int main(int argc, char * const argv[]) {
         print_id3v2_frames(&header, &extheader, frame_data, frame_data_len,
                 verbosity);
     }
+    free(frame_data);
     return 0;
 }

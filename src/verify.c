@@ -66,6 +66,11 @@ int verify_id3v2_frame_header(struct id3v2_header *header,
         debug("Frame %.*s format flags 0x%"PRIx8" invalid",
                 ID3V2_FRAME_ID_SIZE, fheader->id, fheader->format_flags);
         return 0;
+    } else if ((fheader->format_flags & ID3V2_FRAME_HEADER_COMPRESSION_BIT)
+            && !(fheader->format_flags & ID3V2_FRAME_HEADER_DATA_LENGTH_BIT)) {
+        debug("Frame %.*s compression requires data length",
+                ID3V2_FRAME_ID_SIZE, fheader->id);
+        return 0;
     }
     return 1;
 }

@@ -20,7 +20,7 @@ static void print_id3v2_header(struct id3v2_header *header, int verbosity);
 static void print_id3v2_extended_header(struct id3v2_extended_header *eheader,
         int verbosity);
 static void print_id3v2_frame_header(struct id3v2_frame_header *fheader,
-        int verbosity);
+        uint8_t group_id, uint32_t frame_data_len, int verbosity);
 static int print_enc(const char *str, int len, enum id3v2_encoding enc);
 static void print_UFID_frame(struct id3v2_frame_header *fheader,
         uint8_t *fdata);
@@ -158,7 +158,7 @@ static void print_id3v2_extended_header(struct id3v2_extended_header *eheader,
 
 // Print an id3v2 frame header
 static void print_id3v2_frame_header(struct id3v2_frame_header *fheader,
-        int verbosity) {
+        uint8_t group_id, uint32_t frame_data_len, int verbosity) {
     assert(fheader);
 
     if (verbosity > 0) {
@@ -166,6 +166,16 @@ static void print_id3v2_frame_header(struct id3v2_frame_header *fheader,
                 fheader->id);
         printf("%*s: %"PRIu32" bytes\n", TITLE_WIDTH, "Frame Size",
                 fheader->size);
+
+        if (fheader->format_flags & ID3V2_FRAME_HEADER_GROUPING_BIT) {
+            printf("%*s: %"PRIu8"\n", TITLE_WIDTH, "Grouping Identifier",
+                    group_id);
+        }
+        if (fheader->format_flags & ID3V2_FRAME_HEADER_DATA_LENGTH_BIT) {
+            printf("%*s: %"PRIu32"\n", TITLE_WIDTH, "Data Length",
+                    frame_data_len);
+        }
+
     }
 
     if (verbosity > 1) {
@@ -360,24 +370,6 @@ static void print_WXXX_frame(struct id3v2_frame_header *fheader,
 // Print an id3v2 frame
 static void print_id3v2_frame(struct id3v2_frame_header *header,
         uint8_t *fdata, int verbosity) {
-    size_t index = 0;
-
-    if (header->format_flags & ID3V2_FRAME_HEADER_GROUPING_BIT) {
-        if (verbosity > 0) {
-            printf("%*s: %"PRIu8"\n", TITLE_WIDTH, "Grouping Identifier",
-                    *fdata);
-        }
-        index++;
-    }
-    if (header->format_flags & ID3V2_FRAME_HEADER_DATA_LENGTH_BIT) {
-        if (verbosity > 0) {
-            printf("%*s: %"PRIu32"\n", TITLE_WIDTH, "Data Length",
-                    from_synchsafe(byte_swap_32(*(uint32_t *)(fdata + index))));
-        }
-        index++;
-    }
-
-    // TODO: support compression, encryption, unsynchronization
     if (!strncmp(header->id, ID3V2_FRAME_ID_UFID, ID3V2_FRAME_ID_SIZE)) {
         print_UFID_frame(header, fdata);
     } else if (!strncmp(header->id, ID3V2_FRAME_ID_TXXX,
@@ -403,14 +395,17 @@ static void print_id3v2_frame(struct id3v2_frame_header *header,
 static void print_id3v2_frames(struct id3v2_header *header,
         struct id3v2_extended_header *eheader, uint8_t *frame_data,
         size_t frame_data_len, int verbosity) {
-    struct id3v2_frame_header *fheader;
+    struct id3v2_frame_header fheader;
+    uint8_t group_id;
     uint8_t *fdata;
+    uint32_t fdatalen;
     size_t i = 0;
 
-    while (!get_id3v2_frame(header, frame_data, frame_data_len, &i, &fheader,
-                &fdata)) {
-        print_id3v2_frame_header(fheader, verbosity);
-        print_id3v2_frame(fheader, fdata, verbosity);
+    while (get_id3v2_frame(header, frame_data, frame_data_len, &i, &fheader,
+                &group_id, &fdata, &fdatalen)) {
+        print_id3v2_frame_header(&fheader, group_id, fdatalen, verbosity);
+        print_id3v2_frame(&fheader, fdata, verbosity);
+        free(fdata);
     }
 }
 

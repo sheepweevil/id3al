@@ -7,6 +7,7 @@
 #include <string.h>
 #include <sys/mman.h>
 #include <sys/stat.h>
+#include "zlib.h"
 #include "id3v2.h"
 
 int get_id3v2_tag(int fd, struct id3v2_header *header,
@@ -132,6 +133,8 @@ int get_id3v2_tag(int fd, struct id3v2_header *header,
         memcpy(footer, fmap + i, len);
         footer->tag_size = byte_swap_32(footer->tag_size);
         i += len;
+
+
         if (!verify_id3v2_footer(footer)) {
             munmap(fmap, st.st_size);
             return 1;
@@ -141,48 +144,125 @@ int get_id3v2_tag(int fd, struct id3v2_header *header,
     return 0;
 }
 
-int get_id3v2_frame(struct id3v2_header *idheader, uint8_t *frame_data,
-        size_t frame_data_len, size_t *index,
-        struct id3v2_frame_header **header, uint8_t **data) {
-    struct id3v2_frame_header *headerp;
+// Get the next id3v2 frame from the tag.
+//
+// idheader is a pointer the id3v2 header structure
+// frames is a pointer to the beginning of all frame data
+// frames_len is the length in bytes of all frame data
+// index should be initialized to 0 before the first call, then
+//     remain unchanged by the caller
+// header will contain the next frame header information
+// group_id will contain the grouping identifier, if one is present
+// frame_data will contain resynchronized, uncompressed frame data,
+//     and must be freed by the caller
+// frame_data_len will contain the length of the frame data
+//
+// Returns 1 if a frame was retrieved successfully, 0 otherwise
+int get_id3v2_frame(struct id3v2_header *idheader, uint8_t *frames,
+        size_t frames_len, size_t *index, struct id3v2_frame_header *header,
+        uint8_t *group_id, uint8_t **frame_data, uint32_t *frame_data_len) {
+    uint8_t *synchronized;
+    size_t sync_len;
+    int ret;
+    uLongf uncompresslen;
 
-    assert(frame_data);
+    assert(idheader);
+    assert(frames);
     assert(index);
     assert(header);
-    assert(data);
+    assert(group_id);
+    assert(frame_data);
+    assert(frame_data_len);
 
     // We've reached the end of the tag
-    if (*index + sizeof(struct id3v2_frame_header) > frame_data_len) {
-        return 1;
-    } else if (*(frame_data + *index) == 0) {
+    if (*index + sizeof(struct id3v2_frame_header) > frames_len) {
+        return 0;
+    } else if (*(frames + *index) == 0) {
         // We've found padding
-        return 1;
+        return 0;
     }
 
     // Validate the frame header
-    headerp = (struct id3v2_frame_header *)(frame_data + *index);
-    headerp->size = byte_swap_32(headerp->size);
+    memcpy(header, frames + *index, sizeof(struct id3v2_frame_header));
+    header->size = byte_swap_32(header->size);
     // Size isn't synchsafe in 2.3
     if (idheader->version > 3) {
-        headerp->size = from_synchsafe(headerp->size);
+        header->size = from_synchsafe(header->size);
     }
-    if (!verify_id3v2_frame_header(idheader, headerp)) {
-        return 1;
+    if (!verify_id3v2_frame_header(idheader, header)) {
+        return 0;
     }
     *index += sizeof(struct id3v2_frame_header);
 
     // Make sure the data fits
-    if (*index + headerp->size > frame_data_len) {
+    if (*index + header->size > frames_len) {
         debug("Index %zu tag data %"PRIu32" overflows frame %zu",
-                *index, headerp->size, frame_data_len);
-        return 1;
+                *index, header->size, frames_len);
+        return 0;
     }
 
-    *header = headerp;
-    *data = frame_data + *index;
-    *index += headerp->size;
+    // Read the grouping id if it exists
+    if (header->format_flags & ID3V2_FRAME_HEADER_GROUPING_BIT) {
+        *group_id = *(frames + *index);
+        (*index)++;
+    }
 
-    return 0;
+    // Get the data length if it exists
+    if (header->format_flags & ID3V2_FRAME_HEADER_DATA_LENGTH_BIT) {
+        *frame_data_len = from_synchsafe(byte_swap_32(*(uint32_t *)
+                    (frames + *index)));
+        (*index)++;
+    }
+
+    // Resynchronize if needed
+    if (header->format_flags & ID3V2_FRAME_HEADER_UNSYNCHRONIZATION_BIT) {
+        sync_len = resync_len(frames + *index, header->size);
+        synchronized = malloc(sync_len);
+        if (synchronized == NULL) {
+            debug("malloc %zu failed: %m", sync_len);
+            return 0;
+        }
+        resynchronize(frames + *index, header->size, synchronized);
+    } else {
+        sync_len = header->size;
+        synchronized = malloc(sync_len);
+        if (synchronized == NULL) {
+            debug("malloc %zu failed: %m", sync_len);
+            return 0;
+        }
+        memcpy(synchronized, frames + *index, header->size);
+    }
+
+    // Uncompress if needed
+    // Note verify_id3v2_frame_header ensures data length is present
+    if (header->format_flags & ID3V2_FRAME_HEADER_COMPRESSION_BIT) {
+        *frame_data = malloc(*frame_data_len);
+        if (*frame_data == NULL) {
+            debug("malloc %"PRIu32" failed: %m", *frame_data_len);
+            free(synchronized);
+            return 0;
+        }
+
+        uncompresslen = *frame_data_len;
+        ret = uncompress(*frame_data, &uncompresslen, synchronized, sync_len);
+        free(synchronized);
+        if (ret != Z_OK) {
+            debug("uncompress failed: %s", zError(ret));
+            free(*frame_data);
+            return 0;
+        } else if (uncompresslen != *frame_data_len) {
+            debug("uncompressed length mismatch: %lu != %"PRIu32,
+                    uncompresslen, *frame_data_len);
+            free(*frame_data);
+            return 0;
+        }
+    } else {
+        *frame_data = synchronized;
+        *frame_data_len = sync_len;
+    }
+    *index += header->size;
+
+    return 1;
 }
 
 enum id3v2_restriction_tag_size get_tag_size_restriction(uint8_t flags) {

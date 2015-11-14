@@ -520,12 +520,23 @@ int get_id3v2_tag(int fd, struct id3v2_header *header,
         uint8_t **frame_data, size_t *frame_data_len,
         struct id3v2_footer *footer);
 
-// Get the next frame from the frame data
-// index should be initialized to zero before the first call, then unmodified
-// Returns 0 if successful, 1 otherwise
-int get_id3v2_frame(struct id3v2_header *idheader, uint8_t *frame_data,
-        size_t frame_data_len, size_t *index,
-        struct id3v2_frame_header **header, uint8_t **data);
+// Get the next id3v2 frame from the tag.
+//
+// idheader is a pointer the id3v2 header structure
+// frames is a pointer to the beginning of all frame data
+// frames_len is the length in bytes of all frame data
+// index should be initialized to 0 before the first call, then
+//     remain unchanged by the caller
+// header will contain the next frame header information
+// group_id will contain the grouping identifier, if one is present
+// frame_data will contain resynchronized, uncompressed frame data,
+//     and must be freed by the caller
+// frame_data_len will contain the length of the frame data
+//
+// Returns 1 if a frame was retrieved successfully, 0 otherwise
+int get_id3v2_frame(struct id3v2_header *idheader, uint8_t *frames,
+        size_t frames_len, size_t *index, struct id3v2_frame_header *header,
+        uint8_t *group_id, uint8_t **frame_data, uint32_t *frame_data_len);
 
 // Parse frame data
 int parse_UFID_frame(uint8_t *fdata, struct id3v2_frame_UFID *frame);

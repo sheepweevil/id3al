@@ -5,7 +5,7 @@ A command-line ID3 tag viewer for Linux.
 
 First install packages needed to build. On Ubuntu use
 
-    sudo apt-get install build-essential libicu-dev
+    sudo apt-get install build-essential libicu-dev libz-dev
 
 Then build with
 

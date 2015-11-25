@@ -287,6 +287,18 @@ enum id3v2_restriction_image_size get_image_size_restriction(uint8_t flags) {
     return (flags & ID3V2_RESTRICTION_IMAGE_SIZE_BITS);
 }
 
+int parse_AENC_frame(uint8_t *fdata, struct id3v2_frame_AENC *frame) {
+    size_t i;
+    frame->owner_id = (char *)fdata;
+    i = strlen(frame->owner_id) + 1;
+    frame->preview_start = *(uint16_t *)(fdata + i);
+    i += sizeof(uint16_t);
+    frame->preview_length = *(uint16_t *)(fdata + i);
+    i += sizeof(uint16_t);
+    frame->encryption_info = fdata + i;
+    return 1;
+}
+
 int parse_UFID_frame(uint8_t *fdata, struct id3v2_frame_UFID *frame) {
     frame->owner = (char *)fdata;
     frame->id = fdata + strlen(frame->owner) + 1;

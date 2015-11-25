@@ -539,6 +539,7 @@ int get_id3v2_frame(struct id3v2_header *idheader, uint8_t *frames,
         uint8_t *group_id, uint8_t **frame_data, uint32_t *frame_data_len);
 
 // Parse frame data
+int parse_AENC_frame(uint8_t *fdata, struct id3v2_frame_AENC *frame);
 int parse_UFID_frame(uint8_t *fdata, struct id3v2_frame_UFID *frame);
 int parse_text_frame(uint8_t *fdata, struct id3v2_frame_text *frame);
 int parse_TXXX_frame(uint8_t *fdata, struct id3v2_frame_TXXX *frame);

@@ -1,4 +1,4 @@
-// Implementation of ouptut functions 
+// Implementation of ouptut functions
 // Copyright 2015 David Gloe.
 
 #include <assert.h>
@@ -15,62 +15,62 @@
 static int print_enc(const char *str, int len, enum id3v2_encoding enc);
 static size_t strlen_enc(const char *str, enum id3v2_encoding enc);
 
-//static void print_AENC_frame(struct id3v2_frame_header *fheader,
-//        uint8_t *fdata, uint32_t fdatalen);
+static void print_AENC_frame(struct id3v2_frame_header *fheader,
+        uint8_t *fdata, uint32_t fdatalen, int verbosity);
 //static void print_APIC_frame(struct id3v2_frame_header *fheader,
-//        uint8_t *fdata, uint32_t fdatalen);
+//        uint8_t *fdata, uint32_t fdatalen, int verbosity);
 //static void print_ASPI_frame(struct id3v2_frame_header *fheader,
-//        uint8_t *fdata, uint32_t fdatalen);
+//        uint8_t *fdata, uint32_t fdatalen, int verbosity);
 //static void print_COMM_frame(struct id3v2_frame_header *fheader,
-//        uint8_t *fdata, uint32_t fdatalen);
+//        uint8_t *fdata, uint32_t fdatalen, int verbosity);
 //static void print_COMR_frame(struct id3v2_frame_header *fheader,
-//        uint8_t *fdata, uint32_t fdatalen);
+//        uint8_t *fdata, uint32_t fdatalen, int verbosity);
 //static void print_ENCR_frame(struct id3v2_frame_header *fheader,
-//        uint8_t *fdata, uint32_t fdatalen);
+//        uint8_t *fdata, uint32_t fdatalen, int verbosity);
 //static void print_EQU2_frame(struct id3v2_frame_header *fheader,
-//        uint8_t *fdata, uint32_t fdatalen);
+//        uint8_t *fdata, uint32_t fdatalen, int verbosity);
 //static void print_ETCO_frame(struct id3v2_frame_header *fheader,
-//        uint8_t *fdata, uint32_t fdatalen);
+//        uint8_t *fdata, uint32_t fdatalen, int verbosity);
 //static void print_GEOB_frame(struct id3v2_frame_header *fheader,
-//        uint8_t *fdata, uint32_t fdatalen);
+//        uint8_t *fdata, uint32_t fdatalen, int verbosity);
 //static void print_GRID_frame(struct id3v2_frame_header *fheader,
-//        uint8_t *fdata, uint32_t fdatalen);
+//        uint8_t *fdata, uint32_t fdatalen, int verbosity);
 //static void print_LINK_frame(struct id3v2_frame_header *fheader,
-//        uint8_t *fdata, uint32_t fdatalen);
+//        uint8_t *fdata, uint32_t fdatalen, int verbosity);
 //static void print_MCDI_frame(struct id3v2_frame_header *fheader,
-//        uint8_t *fdata, uint32_t fdatalen);
+//        uint8_t *fdata, uint32_t fdatalen, int verbosity);
 //static void print_MLLT_frame(struct id3v2_frame_header *fheader,
-//        uint8_t *fdata, uint32_t fdatalen);
+//        uint8_t *fdata, uint32_t fdatalen, int verbosity);
 //static void print_OWNE_frame(struct id3v2_frame_header *fheader,
-//        uint8_t *fdata, uint32_t fdatalen);
+//        uint8_t *fdata, uint32_t fdatalen, int verbosity);
 //static void print_PRIV_frame(struct id3v2_frame_header *fheader,
-//        uint8_t *fdata, uint32_t fdatalen);
+//        uint8_t *fdata, uint32_t fdatalen, int verbosity);
 //static void print_PCNT_frame(struct id3v2_frame_header *fheader,
-//        uint8_t *fdata, uint32_t fdatalen);
+//        uint8_t *fdata, uint32_t fdatalen, int verbosity);
 //static void print_POPM_frame(struct id3v2_frame_header *fheader,
-//        uint8_t *fdata, uint32_t fdatalen);
+//        uint8_t *fdata, uint32_t fdatalen, int verbosity);
 //static void print_POSS_frame(struct id3v2_frame_header *fheader,
-//        uint8_t *fdata, uint32_t fdatalen);
+//        uint8_t *fdata, uint32_t fdatalen, int verbosity);
 //static void print_RBUF_frame(struct id3v2_frame_header *fheader,
-//        uint8_t *fdata, uint32_t fdatalen);
+//        uint8_t *fdata, uint32_t fdatalen, int verbosity);
 //static void print_RVA2_frame(struct id3v2_frame_header *fheader,
-//        uint8_t *fdata, uint32_t fdatalen);
+//        uint8_t *fdata, uint32_t fdatalen, int verbosity);
 //static void print_RVRB_frame(struct id3v2_frame_header *fheader,
-//        uint8_t *fdata, uint32_t fdatalen);
+//        uint8_t *fdata, uint32_t fdatalen, int verbosity);
 //static void print_SEEK_frame(struct id3v2_frame_header *fheader,
-//        uint8_t *fdata, uint32_t fdatalen);
+//        uint8_t *fdata, uint32_t fdatalen, int verbosity);
 //static void print_SIGN_frame(struct id3v2_frame_header *fheader,
-//        uint8_t *fdata, uint32_t fdatalen);
+//        uint8_t *fdata, uint32_t fdatalen, int verbosity);
 //static void print_SYLT_frame(struct id3v2_frame_header *fheader,
-//        uint8_t *fdata, uint32_t fdatalen);
+//        uint8_t *fdata, uint32_t fdatalen, int verbosity);
 //static void print_SYTC_frame(struct id3v2_frame_header *fheader,
-//        uint8_t *fdata, uint32_t fdatalen);
+//        uint8_t *fdata, uint32_t fdatalen, int verbosity);
 static void print_UFID_frame(struct id3v2_frame_header *fheader,
-        uint8_t *fdata, uint32_t fdatalen);
+        uint8_t *fdata, uint32_t fdatalen, int verbosity);
 //static void print_USER_frame(struct id3v2_frame_header *fheader,
-//        uint8_t *fdata, uint32_t fdatalen);
+//        uint8_t *fdata, uint32_t fdatalen, int verbosity);
 //static void print_USLT_frame(struct id3v2_frame_header *fheader,
-//        uint8_t *fdata, uint32_t fdatalen);
+//        uint8_t *fdata, uint32_t fdatalen, int verbosity);
 static void print_text_frame(struct id3v2_frame_header *fheader,
         uint8_t *fdata, uint32_t fdatalen, int verbosity);
 static void print_TXXX_frame(struct id3v2_frame_header *fheader,
@@ -285,9 +285,31 @@ static size_t strlen_enc(const char *str, enum id3v2_encoding enc) {
     return strlen(str) + 1;
 }
 
+// Print an AENC frame
+static void print_AENC_frame(struct id3v2_frame_header *fheader,
+        uint8_t *fdata, uint32_t fdatalen, int verbosity) {
+    struct id3v2_frame_AENC frame;
+    const char *title;
+    size_t i;
+
+    parse_AENC_frame(fdata, &frame);
+    title = frame_title(fheader);
+
+    printf("%*s: %s - %s\n", TITLE_WIDTH, title, "Owner", frame.owner_id);
+    printf("%*s: %s - %"PRIu16"\n", TITLE_WIDTH, title, "Preview Start",
+            frame.preview_start);
+    printf("%*s: %s - %"PRIu16"\n", TITLE_WIDTH, title, "Preview Length",
+            frame.preview_length);
+    printf("%*s: %s - ", TITLE_WIDTH, title, "Encryption Info");
+    for (i = 0; i < fdatalen - strlen(frame.owner_id) - 5; i++) {
+        printf("%"PRIx8" ", frame.encryption_info[i]);
+    }
+    printf("\n");
+}
+
 // Print a UFID frame
 static void print_UFID_frame(struct id3v2_frame_header *fheader,
-        uint8_t *fdata, uint32_t fdatalen) {
+        uint8_t *fdata, uint32_t fdatalen, int verbosity) {
     struct id3v2_frame_UFID frame;
     size_t i;
     const char *title;
@@ -369,8 +391,11 @@ static void print_WXXX_frame(struct id3v2_frame_header *fheader,
 // Print an id3v2 frame
 void print_id3v2_frame(struct id3v2_frame_header *header,
         uint8_t *fdata, uint32_t fdatalen, int verbosity) {
-    if (!strncmp(header->id, ID3V2_FRAME_ID_UFID, ID3V2_FRAME_ID_SIZE)) {
-        print_UFID_frame(header, fdata, fdatalen);
+    if (!strncmp(header->id, ID3V2_FRAME_ID_AENC, ID3V2_FRAME_ID_SIZE)) {
+        print_AENC_frame(header, fdata, fdatalen, verbosity);
+    } else if (!strncmp(header->id, ID3V2_FRAME_ID_UFID,
+                ID3V2_FRAME_ID_SIZE)) {
+        print_UFID_frame(header, fdata, fdatalen, verbosity);
     } else if (!strncmp(header->id, ID3V2_FRAME_ID_TXXX,
                 ID3V2_FRAME_ID_SIZE)) {
         print_TXXX_frame(header, fdata, fdatalen, verbosity);

@@ -570,4 +570,13 @@ const char *channel_str(enum id3v2_RVA2_channel_type channel);
 const char *interp_str(enum id3v2_EQU2_interpolation_method interp);
 const char *pic_type_str(enum id3v2_APIC_picture_type pic_type);
 
+// Output
+void print_id3v2_header(struct id3v2_header *header, int verbosity);
+void print_id3v2_extended_header(struct id3v2_extended_header *eheader,
+        int verbosity);
+void print_id3v2_frame_header(struct id3v2_frame_header *fheader,
+        uint8_t group_id, uint32_t frame_data_len, int verbosity);
+void print_id3v2_frame(struct id3v2_frame_header *header,
+        uint8_t *fdata, uint32_t fdatalen, int verbosity);
+
 #endif // _ID3V2_H

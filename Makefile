@@ -9,13 +9,14 @@ all: src/id3al
 check: src/tests/id3test
 	./src/tests/id3test 
 
-src/id3al: src/id3al.o src/convert.o src/decode.o src/synchronize.o src/verify.o
-src/tests/id3test: src/tests/id3test.o src/synchronize.o src/decode.o src/verify.o
+src/id3al: src/convert.o src/decode.o src/output.o src/synchronize.o src/verify.o
+src/tests/id3test: src/synchronize.o src/decode.o src/verify.o
 
 src/tests/id3test.o: src/id3v2.h
 src/id3al.o: src/id3v2.h
 src/convert.o: src/id3v2.h
 src/decode.o: src/id3v2.h
+src/output.o: src/id3v2.h
 src/synchronize.o: src/id3v2.h
 src/verify.o: src/id3v2.h
 

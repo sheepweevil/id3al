@@ -23,17 +23,17 @@ static void print_id3v2_frame_header(struct id3v2_frame_header *fheader,
         uint8_t group_id, uint32_t frame_data_len, int verbosity);
 static int print_enc(const char *str, int len, enum id3v2_encoding enc);
 static void print_UFID_frame(struct id3v2_frame_header *fheader,
-        uint8_t *fdata);
+        uint8_t *fdata, uint32_t fdatalen);
 static void print_text_frame(struct id3v2_frame_header *fheader,
-        uint8_t *fdata, int verbosity);
+        uint8_t *fdata, uint32_t fdatalen, int verbosity);
 static void print_TXXX_frame(struct id3v2_frame_header *fheader,
-        uint8_t *fdata, int verbosity);
+        uint8_t *fdata, uint32_t fdatalen, int verbosity);
 static void print_url_frame(struct id3v2_frame_header *fheader,
-        uint8_t *fdata, int verbosity);
+        uint8_t *fdata, uint32_t fdatalen, int verbosity);
 static void print_WXXX_frame(struct id3v2_frame_header *fheader,
-        uint8_t *fdata, int verbosity);
+        uint8_t *fdata, uint32_t fdatalen, int verbosity);
 static void print_id3v2_frame(struct id3v2_frame_header *header,
-        uint8_t *fdata, int verbosity);
+        uint8_t *fdata, uint32_t fdatalen, int verbosity);
 static void print_id3v2_frames(struct id3v2_header *header,
         struct id3v2_extended_header *eheader, uint8_t *frame_data,
         size_t frame_data_len, int verbosity);
@@ -288,7 +288,7 @@ static size_t strlen_enc(const char *str, enum id3v2_encoding enc) {
 
 // Print a UFID frame
 static void print_UFID_frame(struct id3v2_frame_header *fheader,
-        uint8_t *fdata) {
+        uint8_t *fdata, uint32_t fdatalen) {
     struct id3v2_frame_UFID frame;
     size_t i;
     const char *title;
@@ -297,7 +297,7 @@ static void print_UFID_frame(struct id3v2_frame_header *fheader,
     title = frame_title(fheader);
     printf("%*s: %s - %s\n", TITLE_WIDTH, title, "Owner", frame.owner);
     printf("%*s: ", TITLE_WIDTH, title);
-    for (i = 0; i < fheader->size - strlen(frame.owner) - 1; i++) {
+    for (i = 0; i < fdatalen - strlen(frame.owner) - 1; i++) {
         printf("%"PRIx8" ", frame.id[i]);
     }
     printf("\n");
@@ -305,7 +305,7 @@ static void print_UFID_frame(struct id3v2_frame_header *fheader,
 
 // Print any text frame except TXXX
 static void print_text_frame(struct id3v2_frame_header *fheader,
-        uint8_t *fdata, int verbosity) {
+        uint8_t *fdata, uint32_t fdatalen, int verbosity) {
     const char *title = frame_title(fheader);
     struct id3v2_frame_text frame;
 
@@ -315,13 +315,13 @@ static void print_text_frame(struct id3v2_frame_header *fheader,
                 encoding_str(frame.encoding));
     }
     printf("%*s: ", TITLE_WIDTH, title);
-    print_enc(frame.text, fheader->size - 1, frame.encoding);
+    print_enc(frame.text, fdatalen - 1, frame.encoding);
     printf("\n");
 }
 
 // Print a TXXX frame
 static void print_TXXX_frame(struct id3v2_frame_header *fheader,
-        uint8_t *fdata, int verbosity) {
+        uint8_t *fdata, uint32_t fdatalen, int verbosity) {
     const char *title = frame_title(fheader);
     struct id3v2_frame_TXXX frame;
 
@@ -335,21 +335,21 @@ static void print_TXXX_frame(struct id3v2_frame_header *fheader,
     printf("\n");
     printf("%*s: %s - ", TITLE_WIDTH, title, "Value");
     print_enc(frame.value,
-            fheader->size - strlen_enc(frame.description, frame.encoding) - 1,
+            fdatalen - strlen_enc(frame.description, frame.encoding) - 1,
             frame.encoding);
     printf("\n");
 }
 
 // Print any URL frame except WXXX
 static void print_url_frame(struct id3v2_frame_header *fheader,
-        uint8_t *fdata, int verbosity) {
-    printf("%*s: %.*s\n", TITLE_WIDTH, frame_title(fheader), fheader->size,
+        uint8_t *fdata, uint32_t fdatalen, int verbosity) {
+    printf("%*s: %.*s\n", TITLE_WIDTH, frame_title(fheader), fdatalen,
             (char *)fdata);
 }
 
 // Print a WXXX frame
 static void print_WXXX_frame(struct id3v2_frame_header *fheader,
-        uint8_t *fdata, int verbosity) {
+        uint8_t *fdata, uint32_t fdatalen, int verbosity) {
     const char *title = frame_title(fheader);
     struct id3v2_frame_WXXX frame;
 
@@ -362,26 +362,26 @@ static void print_WXXX_frame(struct id3v2_frame_header *fheader,
     print_enc(frame.description, -1, frame.encoding);
     printf("\n");
     printf("%*s: %s - %.*s\n", TITLE_WIDTH, title, "URL",
-            (int)(fheader->size -
+            (int)(fdatalen -
                 strlen_enc(frame.description, frame.encoding) - 1),
             frame.url);
 }
 
 // Print an id3v2 frame
 static void print_id3v2_frame(struct id3v2_frame_header *header,
-        uint8_t *fdata, int verbosity) {
+        uint8_t *fdata, uint32_t fdatalen, int verbosity) {
     if (!strncmp(header->id, ID3V2_FRAME_ID_UFID, ID3V2_FRAME_ID_SIZE)) {
-        print_UFID_frame(header, fdata);
+        print_UFID_frame(header, fdata, fdatalen);
     } else if (!strncmp(header->id, ID3V2_FRAME_ID_TXXX,
                 ID3V2_FRAME_ID_SIZE)) {
-        print_TXXX_frame(header, fdata, verbosity);
+        print_TXXX_frame(header, fdata, fdatalen, verbosity);
     } else if (header->id[0] == 'T') {
-        print_text_frame(header, fdata, verbosity);
+        print_text_frame(header, fdata, fdatalen, verbosity);
     } else if (!strncmp(header->id, ID3V2_FRAME_ID_WXXX,
                 ID3V2_FRAME_ID_SIZE)) {
-        print_WXXX_frame(header, fdata, verbosity);
+        print_WXXX_frame(header, fdata, fdatalen, verbosity);
     } else if (header->id[0] == 'W') {
-        print_url_frame(header, fdata, verbosity);
+        print_url_frame(header, fdata, fdatalen, verbosity);
     } else {
         printf("Support for frame %.*s not implemented yet\n",
                 ID3V2_FRAME_ID_SIZE, header->id);
@@ -404,7 +404,7 @@ static void print_id3v2_frames(struct id3v2_header *header,
     while (get_id3v2_frame(header, frame_data, frame_data_len, &i, &fheader,
                 &group_id, &fdata, &fdatalen)) {
         print_id3v2_frame_header(&fheader, group_id, fdatalen, verbosity);
-        print_id3v2_frame(&fheader, fdata, verbosity);
+        print_id3v2_frame(&fheader, fdata, fdatalen, verbosity);
         free(fdata);
     }
 }

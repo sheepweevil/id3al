@@ -82,10 +82,17 @@ enum id3v2_restriction_image_size {
 };
 
 struct id3v2_extended_header {
-    uint32_t size;      // synchsafe
+    uint32_t size;
     uint8_t  flag_size;
-    uint8_t  flags;
-    uint8_t *flag_data;
+    short update;
+    short crc_present;
+    short restrictions;
+    uint32_t crc;
+    enum id3v2_restriction_tag_size tag_size_restrict;
+    enum id3v2_restriction_text_encoding text_enc_restrict;
+    enum id3v2_restriction_text_size text_size_restrict;
+    enum id3v2_restriction_image_encoding img_enc_restrict;
+    enum id3v2_restriction_image_size img_size_restrict;
 };
 
 // Footer

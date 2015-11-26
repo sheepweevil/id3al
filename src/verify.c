@@ -19,29 +19,11 @@ int verify_id3v2_header(struct id3v2_header *header) {
 
 int verify_id3v2_extended_header(struct id3v2_header *header,
         struct id3v2_extended_header *extheader) {
-    size_t i = 0;
-
-    if (header->version > 3 && !is_synchsafe(extheader->size)) {
-        debug("Extended header size 0x%"PRIx32" not synchsafe",
-                extheader->size);
-        return 0;
-    } else if (extheader->flag_size != ID3V2_EXTENDED_FLAG_SIZE) {
+    if (extheader->flag_size != ID3V2_EXTENDED_FLAG_SIZE) {
         debug("Extended header flag size %"PRIu8" should be %d",
                 extheader->flag_size, ID3V2_EXTENDED_FLAG_SIZE);
         return 0;
-    } else if (extheader->flags & 0x8F) {
-        debug("Extended header flags 0x%"PRIx8" invalid", extheader->flags);
-        return 0;
     }
-    if (extheader->flags & ID3V2_EXTENDED_HEADER_UPDATE_BIT) {
-        if (extheader->flag_data[i] != 0) {
-            debug("Extended header update length %"PRIu8" not 0",
-                    extheader->flag_data[i]);
-            return 0;
-        }
-        i++;
-    }
-    // TODO: check other flags
     return 1;
 }
 

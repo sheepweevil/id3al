@@ -12,7 +12,8 @@
 
 // Parse raw data into a header
 // Return 1 on success, 0 otherwise
-static int parse_id3v2_header(const uint8_t *fdata, size_t *i, struct id3v2_header *header) {
+static int parse_id3v2_header(const uint8_t *fdata, size_t *i,
+        struct id3v2_header *header) {
     uint8_t flags;
 
     memcpy(header->id, fdata, ID3V2_HEADER_ID_SIZE);
@@ -37,11 +38,86 @@ static int parse_id3v2_header(const uint8_t *fdata, size_t *i, struct id3v2_head
             debug("Tag size %"PRIx32" not synchsafe",
                     header->tag_size);
             return 0;
-        } else {
-            header->tag_size = from_synchsafe(header->tag_size);
         }
+        header->tag_size = from_synchsafe(header->tag_size);
     }
     return verify_id3v2_header(header);
+}
+
+// Parse raw data into an extended header
+// Return 1 on success, 0 otherwise
+static int parse_id3v2_extended_header(const uint8_t *fdata, size_t *i,
+        struct id3v2_header *header, struct id3v2_extended_header *extheader) {
+    uint8_t flags;
+
+    extheader->size = byte_swap_32(*(uint32_t *)(fdata + *i));
+    if (header->version >= 4) {
+        if (!is_synchsafe(extheader->size)) {
+            debug("Extended header size %"PRIx32" not synchsafe",
+                    extheader->size);
+            return 0;
+        }
+        extheader->size = from_synchsafe(extheader->size);
+    }
+    *i += sizeof(uint32_t);
+    extheader->flag_size = fdata[*i];
+    (*i)++;
+    flags = fdata[*i];
+    extheader->update = flags & ID3V2_EXTENDED_HEADER_UPDATE_BIT;
+    extheader->crc_present = flags & ID3V2_EXTENDED_HEADER_CRC_BIT;
+    extheader->restrictions = flags &
+            ID3V2_EXTENDED_HEADER_TAG_RESTRICTIONS_BIT;
+    (*i)++;
+    if (extheader->update) {
+        if (fdata[*i] != 0) {
+            debug("Update flag data length %"PRIu8" not 0", fdata[*i]);
+            return 0;
+        }
+        (*i)++;
+    }
+    if (extheader->crc_present) {
+        if (header->version >= 4) {
+            if (fdata[*i] != 5) {
+                debug("CRC flag data length %"PRIu8" not 5", fdata[*i]);
+                return 0;
+            }
+            (*i)++;
+            extheader->crc = byte_swap_32(*(uint32_t *)(fdata + *i));
+            if (!is_synchsafe(extheader->crc)) {
+                debug("Extended header crc %"PRIx32" not synchsafe",
+                        extheader->crc);
+                return 0;
+            }
+            extheader->crc = from_synchsafe(extheader->crc);
+            *i += sizeof(uint32_t);
+            extheader->crc += fdata[*i] << 29;
+            (*i)++;
+        } else {
+            if (fdata[*i] != 4) {
+                debug("CRC flag data length %"PRIu8" not 4", fdata[*i]);
+                return 0;
+            }
+            (*i)++;
+            extheader->crc = byte_swap_32(*(uint32_t *)(fdata + *i));
+            *i += sizeof(uint32_t);
+        }
+    }
+    if (extheader->restrictions) {
+        if (fdata[*i] != 1) {
+            debug("Restriction flag data length %"PRIu8" not 1", fdata[*i]);
+            return 0;
+        }
+        (*i)++;
+        flags = fdata[*i];
+        extheader->tag_size_restrict = get_tag_size_restriction(flags);
+        extheader->text_enc_restrict = get_text_encoding_restriction(flags);
+        extheader->text_size_restrict = get_text_size_restriction(flags);
+        extheader->img_enc_restrict = get_image_encoding_restriction(flags);
+        extheader->img_size_restrict = get_image_size_restriction(flags);
+        (*i)++;
+    }
+
+    return verify_id3v2_extended_header(header, extheader);
 }
 
 int get_id3v2_tag(int fd, struct id3v2_header *header,
@@ -73,8 +149,7 @@ int get_id3v2_tag(int fd, struct id3v2_header *header,
     }
 
     // Search for the header
-    len = ID3V2_HEADER_ID_SIZE;
-    for (i = 0; i < st.st_size - len; i++) {
+    for (i = 0; i < st.st_size - ID3V2_HEADER_ID_SIZE; i++) {
         if (!strncmp(fmap + i, ID3V2_FILE_IDENTIFIER, ID3V2_HEADER_ID_SIZE)) {
             // We've found a header, read it in and check it
             if (parse_id3v2_header(fmap, &i, header)) {
@@ -93,35 +168,9 @@ int get_id3v2_tag(int fd, struct id3v2_header *header,
 
     // Read the extended header if it exists
     if (header->extended_header) {
-        len = ID3V2_EXTENDED_HEADER_MIN_SIZE;
-        if (i > st.st_size - len) {
-            debug("Unexpected eof in extended header size field");
+        if (!parse_id3v2_extended_header(fmap, &i, header, extheader)) {
             munmap(fmap, st.st_size);
             return 1;
-        }
-        memcpy(extheader, fmap + i, len);
-        extheader->size = byte_swap_32(extheader->size);
-        i += len;
-        if (!verify_id3v2_extended_header(header, extheader)) {
-            munmap(fmap, st.st_size);
-            return 1;
-        }
-
-        len = from_synchsafe(extheader->size) - ID3V2_EXTENDED_HEADER_MIN_SIZE;
-        if (len > 0) {
-            if (i > st.st_size - len) {
-                debug("Unexpected eof in extended header");
-                munmap(fmap, st.st_size);
-                return 1;
-            }
-            extheader->flag_data = malloc(len);
-            if (extheader->flag_data == NULL) {
-                debug("malloc %zu failed: %m", len);
-                munmap(fmap, st.st_size);
-                return 1;
-            }
-            memcpy(extheader->flag_data, fmap + i, len);
-            i += len;
         }
     }
 

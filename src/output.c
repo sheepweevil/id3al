@@ -113,9 +113,6 @@ void print_id3v2_extended_header(struct id3v2_extended_header *eheader,
         int verbosity) {
     assert(eheader);
 
-    size_t i = 0;
-    uint32_t crc;
-
     if (verbosity > 0) {
         printf("%*s: %"PRIu32" bytes\n", TITLE_WIDTH, "Extended Header Size",
                 from_synchsafe(eheader->size));
@@ -123,34 +120,21 @@ void print_id3v2_extended_header(struct id3v2_extended_header *eheader,
 
     if (verbosity > 1) {
         printf("%*s: %s\n", TITLE_WIDTH, "Tag is an Update",
-                boolstr(eheader->flags & ID3V2_EXTENDED_HEADER_UPDATE_BIT));
-        if (eheader->flags & ID3V2_EXTENDED_HEADER_UPDATE_BIT) {
-            i++;
+                boolstr(eheader->update));
+        if (eheader->crc_present) {
+            printf("%*s: 0x%"PRIx32"\n", TITLE_WIDTH, "CRC-32", eheader->crc);
         }
-        if (eheader->flags & ID3V2_EXTENDED_HEADER_CRC_BIT) {
-            i++;
-            crc = eheader->flag_data[i] << 28;
-            i++;
-            crc += from_synchsafe(*(uint32_t *)(eheader->flag_data + i));
-            printf("%*s: 0x%"PRIx32"\n", TITLE_WIDTH, "CRC-32", crc);
-        }
-        if (eheader->flags & ID3V2_EXTENDED_HEADER_TAG_RESTRICTIONS_BIT) {
-            i++;
+        if (eheader->restrictions) {
             printf("%*s: %s\n", TITLE_WIDTH, "Tag Size Restriction",
-                    tag_size_restrict_str(get_tag_size_restriction(
-                            eheader->flag_data[i])));
+                    tag_size_restrict_str(eheader->tag_size_restrict));
             printf("%*s: %s\n", TITLE_WIDTH, "Text Restriction",
-                    text_enc_restrict_str(get_text_encoding_restriction(
-                            eheader->flag_data[i])));
+                    text_enc_restrict_str(eheader->text_enc_restrict));
             printf("%*s: %s\n", TITLE_WIDTH, "Text Size Restriction",
-                    text_size_restrict_str(get_text_size_restriction(
-                            eheader->flag_data[i])));
+                    text_size_restrict_str(eheader->text_size_restrict));
             printf("%*s: %s\n", TITLE_WIDTH, "Image Restriction",
-                    img_enc_restrict_str(get_image_encoding_restriction(
-                            eheader->flag_data[i])));
+                    img_enc_restrict_str(eheader->img_enc_restrict));
             printf("%*s: %s\n", TITLE_WIDTH, "Image Size Restriction",
-                    img_size_restrict_str(get_image_size_restriction(
-                            eheader->flag_data[i])));
+                    img_size_restrict_str(eheader->img_size_restrict));
         }
     }
 }

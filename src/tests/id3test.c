@@ -71,7 +71,6 @@ static void check_verify(void) {
     struct id3v2_extended_header extheader;
     struct id3v2_frame_header fheader;
     struct id3v2_footer footer;
-    uint8_t flag_data[8];
 
     memcpy(header.id, ID3V2_FILE_IDENTIFIER, sizeof(header.id));
     header.version = 4;
@@ -90,23 +89,12 @@ static void check_verify(void) {
 
     extheader.size = 0x7f7f7f7f;
     extheader.flag_size = 1;
-    extheader.flags = 0x70;
-    memset(flag_data, 0, sizeof(flag_data));
-    extheader.flag_data = flag_data;
 
     assert(verify_id3v2_extended_header(&header, &extheader));
-
-    extheader.size = 0x80808080;
-    assert(!verify_id3v2_extended_header(&header, &extheader));
-    extheader.size = 0x7f7f7f7f;
 
     extheader.flag_size = 2;
     assert(!verify_id3v2_extended_header(&header, &extheader));
     extheader.flag_size = 1;
-
-    extheader.flags = 0x8f;
-    assert(!verify_id3v2_extended_header(&header, &extheader));
-    extheader.flags = 0x70;
 
     memcpy(fheader.id, ID3V2_FRAME_ID_AENC, ID3V2_FRAME_ID_SIZE);
     fheader.size = 0x7f7f7f7f;

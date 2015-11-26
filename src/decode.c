@@ -238,10 +238,10 @@ int get_id3v2_tag(int fd, struct id3v2_header *header,
 // frame_data_len will contain the length of the frame data
 //
 // Returns 1 if a frame was retrieved successfully, 0 otherwise
-int get_id3v2_frame(struct id3v2_header *idheader, uint8_t *frames,
-        size_t frames_len, size_t *index, struct id3v2_frame_header *header,
-        uint8_t *group_id, uint8_t **frame_data, uint32_t *frame_data_len) {
+int get_id3v2_frame(struct id3v2_header *idheader, const uint8_t *frames,
+        size_t frames_len, size_t *index, struct id3v2_frame_header *header) {
     uint8_t *synchronized;
+    uint8_t flags;
     size_t sync_len;
     int ret;
     uLongf uncompresslen;
@@ -250,9 +250,6 @@ int get_id3v2_frame(struct id3v2_header *idheader, uint8_t *frames,
     assert(frames);
     assert(index);
     assert(header);
-    assert(group_id);
-    assert(frame_data);
-    assert(frame_data_len);
 
     // We've reached the end of the tag
     if (*index + sizeof(struct id3v2_frame_header) > frames_len) {
@@ -262,40 +259,67 @@ int get_id3v2_frame(struct id3v2_header *idheader, uint8_t *frames,
         return 0;
     }
 
-    // Validate the frame header
-    memcpy(header, frames + *index, sizeof(struct id3v2_frame_header));
-    header->size = byte_swap_32(header->size);
-    // Size isn't synchsafe in 2.3
-    if (idheader->version > 3) {
+    // Parse frame header 
+    memcpy(header->id, frames + *index, ID3V2_FRAME_ID_SIZE);
+    header->id[ID3V2_FRAME_ID_SIZE] = 0;
+    *index += ID3V2_FRAME_ID_SIZE;
+    header->size = byte_swap_32(*(uint32_t *)(frames + *index));
+    *index += sizeof(uint32_t);
+    if (idheader->version >= 4) {
+        if (!is_synchsafe(header->size)) {
+            debug("Frame size %"PRIx32" not synchsafe", header->size);
+            return 0;
+        }
         header->size = from_synchsafe(header->size);
     }
-    if (!verify_id3v2_frame_header(idheader, header)) {
-        return 0;
-    }
-    *index += sizeof(struct id3v2_frame_header);
 
+    // Read flags
+    flags = frames[*index];
+    (*index)++;
+    header->tag_alter_pres = flags & ID3V2_FRAME_HEADER_TAG_ALTER_BIT;
+    header->file_alter_pres = flags & ID3V2_FRAME_HEADER_FILE_ALTER_BIT;
+    header->read_only = flags & ID3V2_FRAME_HEADER_READ_ONLY_BIT;
+    flags = frames[*index];
+    (*index)++;
+    header->group_id_present = flags & ID3V2_FRAME_HEADER_GROUPING_BIT;
+    header->compressed = flags & ID3V2_FRAME_HEADER_COMPRESSION_BIT;
+    header->encrypted = flags & ID3V2_FRAME_HEADER_ENCRYPTION_BIT;
+    header->unsynchronized = flags & ID3V2_FRAME_HEADER_UNSYNCHRONIZATION_BIT;
+    header->data_length_present = flags & ID3V2_FRAME_HEADER_DATA_LENGTH_BIT;
+
+    // Read the grouping id if it exists
+    if (header->group_id_present) {
+        header->group_id = frames[*index];
+        (*index)++;
+    }
+
+    // Get the data length if it exists
+    if (header->data_length_present) {
+        header->data_len = byte_swap_32(*(uint32_t *)(frames + *index));
+        *index += sizeof(uint32_t);
+        if (idheader->version >= 4) {
+            if (!is_synchsafe(header->data_len)) {
+                debug("Frame data length %"PRIx32" not synchsafe",
+                        header->data_len);
+                return 0;
+            }
+            header->data_len = from_synchsafe(header->data_len);
+        }
+    }
+    
     // Make sure the data fits
     if (*index + header->size > frames_len) {
         debug("Index %zu tag data %"PRIu32" overflows frame %zu",
                 *index, header->size, frames_len);
         return 0;
     }
-
-    // Read the grouping id if it exists
-    if (header->format_flags & ID3V2_FRAME_HEADER_GROUPING_BIT) {
-        *group_id = *(frames + *index);
-        (*index)++;
-    }
-
-    // Get the data length if it exists
-    if (header->format_flags & ID3V2_FRAME_HEADER_DATA_LENGTH_BIT) {
-        *frame_data_len = from_synchsafe(byte_swap_32(*(uint32_t *)
-                    (frames + *index)));
-        (*index)++;
+    
+    if (!verify_id3v2_frame_header(idheader, header)) {
+        return 0;
     }
 
     // Resynchronize if needed
-    if (header->format_flags & ID3V2_FRAME_HEADER_UNSYNCHRONIZATION_BIT) {
+    if (header->unsynchronized || idheader->unsynchronization) {
         sync_len = resync_len(frames + *index, header->size);
         synchronized = malloc(sync_len);
         if (synchronized == NULL) {
@@ -315,30 +339,30 @@ int get_id3v2_frame(struct id3v2_header *idheader, uint8_t *frames,
 
     // Uncompress if needed
     // Note verify_id3v2_frame_header ensures data length is present
-    if (header->format_flags & ID3V2_FRAME_HEADER_COMPRESSION_BIT) {
-        *frame_data = malloc(*frame_data_len);
-        if (*frame_data == NULL) {
-            debug("malloc %"PRIu32" failed: %m", *frame_data_len);
+    if (header->compressed) {
+        header->data = malloc(header->data_len);
+        if (header->data == NULL) {
+            debug("malloc %"PRIu32" failed: %m", header->data_len);
             free(synchronized);
             return 0;
         }
 
-        uncompresslen = *frame_data_len;
-        ret = uncompress(*frame_data, &uncompresslen, synchronized, sync_len);
+        uncompresslen = header->data_len;
+        ret = uncompress(header->data, &uncompresslen, synchronized, sync_len);
         free(synchronized);
         if (ret != Z_OK) {
             debug("uncompress failed: %s", zError(ret));
-            free(*frame_data);
+            free(header->data);
             return 0;
-        } else if (uncompresslen != *frame_data_len) {
+        } else if (uncompresslen != header->data_len) {
             debug("uncompressed length mismatch: %lu != %"PRIu32,
-                    uncompresslen, *frame_data_len);
-            free(*frame_data);
+                    uncompresslen, header->data_len);
+            free(header->data);
             return 0;
         }
     } else {
-        *frame_data = synchronized;
-        *frame_data_len = sync_len;
+        header->data = synchronized;
+        header->data_len = sync_len;
     }
     *index += header->size;
 

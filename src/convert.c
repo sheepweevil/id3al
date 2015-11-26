@@ -132,11 +132,11 @@ const char *frame_title(struct id3v2_frame_header *fheader) {
     size_t i;
 
     for (i = 0; i < sizeof(frames) / sizeof(const char *); i++) {
-        if (!strncmp(fheader->id, frames[i], ID3V2_FRAME_ID_SIZE)) {
+        if (!strcmp(fheader->id, frames[i])) {
             return titles[i];
         }
     }
-    return "Unknown Tag";
+    return fheader->id;
 }
 
 // Describe the text encoding used

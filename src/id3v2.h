@@ -127,11 +127,20 @@ struct id3v2_footer {
 #define ID3V2_FRAME_ID_SIZE 4
 
 struct id3v2_frame_header {
-    char     id[ID3V2_FRAME_ID_SIZE]; // not null terminated
-    uint32_t size;                    // synchsafe
-    uint8_t status_flags;
-    uint8_t format_flags;
-} __attribute__((packed));
+    char     id[ID3V2_FRAME_ID_SIZE + 1];
+    uint32_t size;
+    short tag_alter_pres;
+    short file_alter_pres;
+    short read_only;
+    short group_id_present;
+    short compressed;
+    short encrypted;
+    short unsynchronized;
+    short data_length_present;
+    uint8_t group_id;
+    uint32_t data_len;
+    uint8_t *data;
+};
 
 // Encodings
 enum id3v2_encoding {
@@ -544,9 +553,8 @@ int get_id3v2_tag(int fd, struct id3v2_header *header,
 // frame_data_len will contain the length of the frame data
 //
 // Returns 1 if a frame was retrieved successfully, 0 otherwise
-int get_id3v2_frame(struct id3v2_header *idheader, uint8_t *frames,
-        size_t frames_len, size_t *index, struct id3v2_frame_header *header,
-        uint8_t *group_id, uint8_t **frame_data, uint32_t *frame_data_len);
+int get_id3v2_frame(struct id3v2_header *idheader, const uint8_t *frames,
+        size_t frames_len, size_t *index, struct id3v2_frame_header *header);
 
 // Parse frame data
 int parse_AENC_frame(uint8_t *fdata, struct id3v2_frame_AENC *frame);
@@ -586,8 +594,8 @@ void print_id3v2_header(struct id3v2_header *header, int verbosity);
 void print_id3v2_extended_header(struct id3v2_extended_header *eheader,
         int verbosity);
 void print_id3v2_frame_header(struct id3v2_frame_header *fheader,
-        uint8_t group_id, uint32_t frame_data_len, int verbosity);
+        int verbosity);
 void print_id3v2_frame(struct id3v2_frame_header *header,
-        uint8_t *fdata, uint32_t fdatalen, int verbosity);
+        int verbosity);
 
 #endif // _ID3V2_H

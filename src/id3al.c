@@ -64,16 +64,12 @@ static void print_id3v2_frames(struct id3v2_header *header,
         struct id3v2_extended_header *eheader, uint8_t *frame_data,
         size_t frame_data_len, int verbosity) {
     struct id3v2_frame_header fheader;
-    uint8_t group_id;
-    uint8_t *fdata;
-    uint32_t fdatalen;
     size_t i = 0;
 
-    while (get_id3v2_frame(header, frame_data, frame_data_len, &i, &fheader,
-                &group_id, &fdata, &fdatalen)) {
-        print_id3v2_frame_header(&fheader, group_id, fdatalen, verbosity);
-        print_id3v2_frame(&fheader, fdata, fdatalen, verbosity);
-        free(fdata);
+    while (get_id3v2_frame(header, frame_data, frame_data_len, &i, &fheader)) {
+        print_id3v2_frame_header(&fheader, verbosity);
+        print_id3v2_frame(&fheader, verbosity);
+        free(fheader.data);
     }
 }
 

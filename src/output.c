@@ -93,13 +93,13 @@ void print_id3v2_header(struct id3v2_header *header, int verbosity) {
 
     if (verbosity > 1) {
         printf("%*s: %s\n", TITLE_WIDTH, "Unsynchronization",
-                boolstr(header->flags & ID3V2_HEADER_UNSYNCHRONIZATION_BIT));
+                boolstr(header->unsynchronization));
         printf("%*s: %s\n", TITLE_WIDTH, "Extended Header",
-                boolstr(header->flags & ID3V2_HEADER_EXTENDED_HEADER_BIT));
+                boolstr(header->extended_header));
         printf("%*s: %s\n", TITLE_WIDTH, "Experimental",
-                boolstr(header->flags & ID3V2_HEADER_EXPERIMENTAL_BIT));
+                boolstr(header->experimental));
         printf("%*s: %s\n", TITLE_WIDTH, "Footer",
-                boolstr(header->flags & ID3V2_HEADER_FOOTER_BIT));
+                boolstr(header->footer));
     }
 
     if (verbosity > 0) {

@@ -26,12 +26,15 @@ typedef struct uint24 { uint8_t byte[3]; } uint24_t;
 #define ID3V2_SUPPORTED_VERSION 4
 
 struct id3v2_header {
-    char     id[ID3V2_HEADER_ID_SIZE]; // not null terminated
+    char     id[ID3V2_HEADER_ID_SIZE + 1];
     uint8_t  version;
     uint8_t  revision;
-    uint8_t  flags;
-    uint32_t tag_size; // synchsafe
-} __attribute__((packed));
+    short unsynchronization;
+    short extended_header;
+    short experimental;
+    short footer;
+    uint32_t tag_size;
+};
 
 // Extended header
 #define ID3V2_EXTENDED_HEADER_MIN_SIZE 6

@@ -6,19 +6,12 @@
 #include "id3v2.h"
 
 int verify_id3v2_header(struct id3v2_header *header) {
-    if (strncmp(header->id, ID3V2_FILE_IDENTIFIER, ID3V2_HEADER_ID_SIZE)) {
-        debug("Tag ID %.*s should be %s",
-                ID3V2_HEADER_ID_SIZE, header->id, ID3V2_FILE_IDENTIFIER);
+    if (strcmp(header->id, ID3V2_FILE_IDENTIFIER)) {
+        debug("Tag ID %s should be %s", header->id, ID3V2_FILE_IDENTIFIER);
         return 0;
     } else if (header->version > ID3V2_SUPPORTED_VERSION) {
         debug("Tag version %"PRIu8" higher than supported version %d",
                 header->version, ID3V2_SUPPORTED_VERSION);
-        return 0;
-    } else if (header->flags & 0x0f) {
-        debug("Tag flags 0x%"PRIx8" invalid", header->flags);
-        return 0;
-    } else if (header->version > 3 && !is_synchsafe(header->tag_size)) {
-        debug("Tag size 0x%"PRIx32" not synchsafe", header->tag_size);
         return 0;
     }
     return 1;

@@ -101,7 +101,7 @@ int main(int argc, char * const argv[]) {
         }
 
         print_id3v2_header(&header, verbosity);
-        if (header.flags & ID3V2_HEADER_EXTENDED_HEADER_BIT) {
+        if (header.extended_header) {
             print_id3v2_extended_header(&extheader, verbosity);
         }
 

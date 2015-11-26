@@ -10,6 +10,40 @@
 #include "zlib.h"
 #include "id3v2.h"
 
+// Parse raw data into a header
+// Return 1 on success, 0 otherwise
+static int parse_id3v2_header(const uint8_t *fdata, size_t *i, struct id3v2_header *header) {
+    uint8_t flags;
+
+    memcpy(header->id, fdata, ID3V2_HEADER_ID_SIZE);
+    header->id[ID3V2_HEADER_ID_SIZE] = 0;
+    *i += ID3V2_HEADER_ID_SIZE;
+    header->version = fdata[*i];
+    (*i)++;
+    header->revision = fdata[*i];
+    (*i)++;
+    flags = fdata[*i];
+    header->unsynchronization = flags &
+            ID3V2_HEADER_UNSYNCHRONIZATION_BIT;
+    header->extended_header = flags &
+            ID3V2_HEADER_EXTENDED_HEADER_BIT;
+    header->experimental = flags & ID3V2_HEADER_EXPERIMENTAL_BIT;
+    header->footer = flags & ID3V2_HEADER_FOOTER_BIT;
+    (*i)++;
+    header->tag_size = byte_swap_32(*(uint32_t *)(fdata + *i));
+    *i += sizeof(uint32_t);
+    if (header->version >= 4) {
+        if (!is_synchsafe(header->tag_size)) {
+            debug("Tag size %"PRIx32" not synchsafe",
+                    header->tag_size);
+            return 0;
+        } else {
+            header->tag_size = from_synchsafe(header->tag_size);
+        }
+    }
+    return verify_id3v2_header(header);
+}
+
 int get_id3v2_tag(int fd, struct id3v2_header *header,
         struct id3v2_extended_header *extheader,
         uint8_t **frame_data, size_t *frame_data_len,
@@ -39,18 +73,15 @@ int get_id3v2_tag(int fd, struct id3v2_header *header,
     }
 
     // Search for the header
-    len = sizeof(struct id3v2_header);
+    len = ID3V2_HEADER_ID_SIZE;
     for (i = 0; i < st.st_size - len; i++) {
         if (!strncmp(fmap + i, ID3V2_FILE_IDENTIFIER, ID3V2_HEADER_ID_SIZE)) {
             // We've found a header, read it in and check it
-            memcpy(header, fmap + i, len);
-            header->tag_size = byte_swap_32(header->tag_size);
-            i += len;
-            if (!verify_id3v2_header(header)) {
-                continue;
-            } else {
+            if (parse_id3v2_header(fmap, &i, header)) {
                 found_header = 1;
                 break;
+            } else {
+                continue;
             }
         }
     }
@@ -61,7 +92,7 @@ int get_id3v2_tag(int fd, struct id3v2_header *header,
     }
 
     // Read the extended header if it exists
-    if (header->flags & ID3V2_HEADER_EXTENDED_HEADER_BIT) {
+    if (header->extended_header) {
         len = ID3V2_EXTENDED_HEADER_MIN_SIZE;
         if (i > st.st_size - len) {
             debug("Unexpected eof in extended header size field");
@@ -95,11 +126,11 @@ int get_id3v2_tag(int fd, struct id3v2_header *header,
     }
 
     // Next read the frame data
-    len = from_synchsafe(header->tag_size);
-    if (header->flags & ID3V2_HEADER_EXTENDED_HEADER_BIT) {
+    len = header->tag_size;
+    if (header->extended_header) {
         len -= from_synchsafe(extheader->size);
     }
-    if (header->flags & ID3V2_HEADER_FOOTER_BIT) {
+    if (header->footer) {
         len -= sizeof(struct id3v2_footer);
     }
     if (len <= 0) {
@@ -123,7 +154,7 @@ int get_id3v2_tag(int fd, struct id3v2_header *header,
     i += len;
 
     // Finally read the footer
-    if (header->flags & ID3V2_HEADER_FOOTER_BIT) {
+    if (header->footer) {
         len = sizeof(struct id3v2_footer);
         if (i > st.st_size - len) {
             debug("Unexpected eof in footer");

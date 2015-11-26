@@ -9,7 +9,6 @@
 
 static void check_type_sizes(void) {
     assert(sizeof(uint24_t) == 3);
-    assert(sizeof(struct id3v2_header) == 10);
     assert(sizeof(struct id3v2_footer) == 10);
     assert(sizeof(struct id3v2_frame_header) == 10);
 }
@@ -77,7 +76,6 @@ static void check_verify(void) {
     memcpy(header.id, ID3V2_FILE_IDENTIFIER, sizeof(header.id));
     header.version = 4;
     header.revision = 0;
-    header.flags = 0xf0;
     header.tag_size = 0x7f7f7f7f;
 
     assert(verify_id3v2_header(&header));
@@ -89,13 +87,6 @@ static void check_verify(void) {
     header.version = 5;
     assert(!verify_id3v2_header(&header));
     header.version = 4;
-
-    header.flags = 0x0f;
-    assert(!verify_id3v2_header(&header));
-    header.flags = 0xf0;
-
-    header.tag_size = 0x80808080;
-    assert(!verify_id3v2_header(&header));
 
     extheader.size = 0x7f7f7f7f;
     extheader.flag_size = 1;

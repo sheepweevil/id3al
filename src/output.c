@@ -95,11 +95,11 @@ void print_id3v2_header(struct id3v2_header *header, int verbosity) {
         printf("%*s: %s\n", TITLE_WIDTH, "Unsynchronization",
                 boolstr(header->unsynchronization));
         printf("%*s: %s\n", TITLE_WIDTH, "Extended Header",
-                boolstr(header->extended_header));
+                boolstr(header->extheader_present));
         printf("%*s: %s\n", TITLE_WIDTH, "Experimental",
                 boolstr(header->experimental));
         printf("%*s: %s\n", TITLE_WIDTH, "Footer",
-                boolstr(header->footer));
+                boolstr(header->footer_present));
     }
 
     if (verbosity > 0) {

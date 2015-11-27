@@ -26,10 +26,10 @@ static int parse_id3v2_header(const uint8_t *fdata, size_t *i,
     flags = fdata[*i];
     header->unsynchronization = flags &
             ID3V2_HEADER_UNSYNCHRONIZATION_BIT;
-    header->extended_header = flags &
+    header->extheader_present = flags &
             ID3V2_HEADER_EXTENDED_HEADER_BIT;
     header->experimental = flags & ID3V2_HEADER_EXPERIMENTAL_BIT;
-    header->footer = flags & ID3V2_HEADER_FOOTER_BIT;
+    header->footer_present = flags & ID3V2_HEADER_FOOTER_BIT;
     (*i)++;
     header->tag_size = byte_swap_32(*(uint32_t *)(fdata + *i));
     *i += sizeof(uint32_t);
@@ -41,14 +41,16 @@ static int parse_id3v2_header(const uint8_t *fdata, size_t *i,
         }
         header->tag_size = from_synchsafe(header->tag_size);
     }
+    header->i = 0;
     return verify_id3v2_header(header);
 }
 
 // Parse raw data into an extended header
 // Return 1 on success, 0 otherwise
-static int parse_id3v2_extended_header(const uint8_t *fdata, size_t *i,
-        struct id3v2_header *header, struct id3v2_extended_header *extheader) {
+static int parse_id3v2_extended_header(uint8_t *fdata, size_t *i,
+        struct id3v2_header *header) {
     uint8_t flags;
+    struct id3v2_extended_header *extheader = &header->extheader;
 
     extheader->size = byte_swap_32(*(uint32_t *)(fdata + *i));
     if (header->version >= 4) {
@@ -120,10 +122,7 @@ static int parse_id3v2_extended_header(const uint8_t *fdata, size_t *i,
     return verify_id3v2_extended_header(header, extheader);
 }
 
-int get_id3v2_tag(int fd, struct id3v2_header *header,
-        struct id3v2_extended_header *extheader,
-        uint8_t **frame_data, size_t *frame_data_len,
-        struct id3v2_footer *footer) {
+int get_id3v2_tag(int fd, struct id3v2_header *header) {
     struct stat st;
     void *fmap;
     size_t i;
@@ -131,10 +130,6 @@ int get_id3v2_tag(int fd, struct id3v2_header *header,
     int found_header, ret;
 
     assert(header);
-    assert(extheader);
-    assert(frame_data);
-    assert(frame_data_len);
-    assert(footer);
 
     // Map the fd for easy parsing
     ret = fstat(fd, &st);
@@ -167,8 +162,8 @@ int get_id3v2_tag(int fd, struct id3v2_header *header,
     }
 
     // Read the extended header if it exists
-    if (header->extended_header) {
-        if (!parse_id3v2_extended_header(fmap, &i, header, extheader)) {
+    if (header->extheader_present) {
+        if (!parse_id3v2_extended_header(fmap, &i, header)) {
             munmap(fmap, st.st_size);
             return 1;
         }
@@ -176,11 +171,11 @@ int get_id3v2_tag(int fd, struct id3v2_header *header,
 
     // Next read the frame data
     len = header->tag_size;
-    if (header->extended_header) {
-        len -= from_synchsafe(extheader->size);
+    if (header->extheader_present) {
+        len -= from_synchsafe(header->extheader.size);
     }
-    if (header->footer) {
-        len -= sizeof(struct id3v2_footer);
+    if (header->footer_present) {
+        len -= ID3V2_FOOTER_SIZE;
     }
     if (len <= 0) {
         debug("Frame data length %zd invalid", len);
@@ -192,30 +187,49 @@ int get_id3v2_tag(int fd, struct id3v2_header *header,
         munmap(fmap, st.st_size);
         return 1;
     }
-    *frame_data = malloc(len);
-    if (*frame_data == NULL) {
+    header->frame_data = malloc(len);
+    if (header->frame_data == NULL) {
         debug("malloc %zd failed: %m", len);
         munmap(fmap, st.st_size);
         return 1;
     }
-    *frame_data_len = len;
-    memcpy(*frame_data, fmap + i, len);
+    header->frame_data_len = len;
+    memcpy(header->frame_data, fmap + i, len);
     i += len;
 
     // Finally read the footer
-    if (header->footer) {
-        len = sizeof(struct id3v2_footer);
-        if (i > st.st_size - len) {
+    if (header->footer_present) {
+        if (i > st.st_size - ID3V2_FOOTER_SIZE) {
             debug("Unexpected eof in footer");
             munmap(fmap, st.st_size);
             return 1;
         }
-        memcpy(footer, fmap + i, len);
-        footer->tag_size = byte_swap_32(footer->tag_size);
-        i += len;
+        if (strncmp(fmap + i, ID3V2_FOOTER_IDENTIFIER, ID3V2_FOOTER_ID_SIZE)) {
+            debug("Expected footer not found");
+            munmap(fmap, st.st_size);
+            return 1;
+        }
+        memcpy(header->footer.id, fmap + i, ID3V2_FOOTER_ID_SIZE);
+        header->footer.id[ID3V2_FOOTER_ID_SIZE] = 0;
+        i += ID3V2_FOOTER_ID_SIZE;
+        header->footer.version = *(uint8_t *)(fmap + i);
+        i++;
+        header->footer.revision = *(uint8_t *)(fmap + i);
+        i++;
+        header->footer.flags = *(uint8_t *)(fmap + i);
+        i++;
+        header->footer.tag_size = byte_swap_32(*(uint32_t *)(fmap + i));
+        if (header->version >= 4) {
+            if (!is_synchsafe(header->footer.tag_size)) {
+                debug("Footer tag size %"PRIx32" not synchsafe",
+                        header->footer.tag_size);
+                munmap(fmap, st.st_size);
+                return 1;
+            }
+            header->footer.tag_size = from_synchsafe(header->footer.tag_size);
+        }
 
-
-        if (!verify_id3v2_footer(footer)) {
+        if (!verify_id3v2_footer(&header->footer)) {
             munmap(fmap, st.st_size);
             return 1;
         }
@@ -227,19 +241,11 @@ int get_id3v2_tag(int fd, struct id3v2_header *header,
 // Get the next id3v2 frame from the tag.
 //
 // idheader is a pointer the id3v2 header structure
-// frames is a pointer to the beginning of all frame data
-// frames_len is the length in bytes of all frame data
-// index should be initialized to 0 before the first call, then
-//     remain unchanged by the caller
 // header will contain the next frame header information
-// group_id will contain the grouping identifier, if one is present
-// frame_data will contain resynchronized, uncompressed frame data,
-//     and must be freed by the caller
-// frame_data_len will contain the length of the frame data
 //
 // Returns 1 if a frame was retrieved successfully, 0 otherwise
-int get_id3v2_frame(struct id3v2_header *idheader, const uint8_t *frames,
-        size_t frames_len, size_t *index, struct id3v2_frame_header *header) {
+int get_id3v2_frame(struct id3v2_header *idheader,
+        struct id3v2_frame_header *header) {
     uint8_t *synchronized;
     uint8_t flags;
     size_t sync_len;
@@ -247,24 +253,24 @@ int get_id3v2_frame(struct id3v2_header *idheader, const uint8_t *frames,
     uLongf uncompresslen;
 
     assert(idheader);
-    assert(frames);
-    assert(index);
     assert(header);
 
     // We've reached the end of the tag
-    if (*index + sizeof(struct id3v2_frame_header) > frames_len) {
+    if (idheader->i + ID3V2_FRAME_HEADER_SIZE > idheader->frame_data_len) {
         return 0;
-    } else if (*(frames + *index) == 0) {
+    } else if (idheader->frame_data[idheader->i] == 0) {
         // We've found padding
         return 0;
     }
 
-    // Parse frame header 
-    memcpy(header->id, frames + *index, ID3V2_FRAME_ID_SIZE);
+    // Parse frame header
+    memcpy(header->id, idheader->frame_data + idheader->i,
+            ID3V2_FRAME_ID_SIZE);
     header->id[ID3V2_FRAME_ID_SIZE] = 0;
-    *index += ID3V2_FRAME_ID_SIZE;
-    header->size = byte_swap_32(*(uint32_t *)(frames + *index));
-    *index += sizeof(uint32_t);
+    idheader->i += ID3V2_FRAME_ID_SIZE;
+    header->size = byte_swap_32(*(uint32_t *)(idheader->frame_data +
+                idheader->i));
+    idheader->i += sizeof(uint32_t);
     if (idheader->version >= 4) {
         if (!is_synchsafe(header->size)) {
             debug("Frame size %"PRIx32" not synchsafe", header->size);
@@ -274,13 +280,13 @@ int get_id3v2_frame(struct id3v2_header *idheader, const uint8_t *frames,
     }
 
     // Read flags
-    flags = frames[*index];
-    (*index)++;
+    flags = idheader->frame_data[idheader->i];
+    (idheader->i)++;
     header->tag_alter_pres = flags & ID3V2_FRAME_HEADER_TAG_ALTER_BIT;
     header->file_alter_pres = flags & ID3V2_FRAME_HEADER_FILE_ALTER_BIT;
     header->read_only = flags & ID3V2_FRAME_HEADER_READ_ONLY_BIT;
-    flags = frames[*index];
-    (*index)++;
+    flags = idheader->frame_data[idheader->i];
+    (idheader->i)++;
     header->group_id_present = flags & ID3V2_FRAME_HEADER_GROUPING_BIT;
     header->compressed = flags & ID3V2_FRAME_HEADER_COMPRESSION_BIT;
     header->encrypted = flags & ID3V2_FRAME_HEADER_ENCRYPTION_BIT;
@@ -289,14 +295,15 @@ int get_id3v2_frame(struct id3v2_header *idheader, const uint8_t *frames,
 
     // Read the grouping id if it exists
     if (header->group_id_present) {
-        header->group_id = frames[*index];
-        (*index)++;
+        header->group_id = idheader->frame_data[idheader->i];
+        (idheader->i)++;
     }
 
     // Get the data length if it exists
     if (header->data_length_present) {
-        header->data_len = byte_swap_32(*(uint32_t *)(frames + *index));
-        *index += sizeof(uint32_t);
+        header->data_len = byte_swap_32(*(uint32_t *)(idheader->frame_data +
+                    idheader->i));
+        idheader->i += sizeof(uint32_t);
         if (idheader->version >= 4) {
             if (!is_synchsafe(header->data_len)) {
                 debug("Frame data length %"PRIx32" not synchsafe",
@@ -306,27 +313,28 @@ int get_id3v2_frame(struct id3v2_header *idheader, const uint8_t *frames,
             header->data_len = from_synchsafe(header->data_len);
         }
     }
-    
+
     // Make sure the data fits
-    if (*index + header->size > frames_len) {
+    if (idheader->i + header->size > idheader->frame_data_len) {
         debug("Index %zu tag data %"PRIu32" overflows frame %zu",
-                *index, header->size, frames_len);
+                idheader->i, header->size, idheader->frame_data_len);
         return 0;
     }
-    
+
     if (!verify_id3v2_frame_header(idheader, header)) {
         return 0;
     }
 
     // Resynchronize if needed
     if (header->unsynchronized || idheader->unsynchronization) {
-        sync_len = resync_len(frames + *index, header->size);
+        sync_len = resync_len(idheader->frame_data + idheader->i, header->size);
         synchronized = malloc(sync_len);
         if (synchronized == NULL) {
             debug("malloc %zu failed: %m", sync_len);
             return 0;
         }
-        resynchronize(frames + *index, header->size, synchronized);
+        resynchronize(idheader->frame_data + idheader->i, header->size,
+                synchronized);
     } else {
         sync_len = header->size;
         synchronized = malloc(sync_len);
@@ -334,7 +342,7 @@ int get_id3v2_frame(struct id3v2_header *idheader, const uint8_t *frames,
             debug("malloc %zu failed: %m", sync_len);
             return 0;
         }
-        memcpy(synchronized, frames + *index, header->size);
+        memcpy(synchronized, idheader->frame_data + idheader->i, header->size);
     }
 
     // Uncompress if needed
@@ -364,7 +372,7 @@ int get_id3v2_frame(struct id3v2_header *idheader, const uint8_t *frames,
         header->data = synchronized;
         header->data_len = sync_len;
     }
-    *index += header->size;
+    idheader->i += header->size;
 
     return 1;
 }

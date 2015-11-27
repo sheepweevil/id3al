@@ -24,19 +24,8 @@ typedef struct uint24 { uint8_t byte[3]; } uint24_t;
 
 #define ID3V2_HEADER_ID_SIZE 3
 #define ID3V2_SUPPORTED_VERSION 4
+#define ID3V2_HEADER_SIZE 10
 
-struct id3v2_header {
-    char     id[ID3V2_HEADER_ID_SIZE + 1];
-    uint8_t  version;
-    uint8_t  revision;
-    short unsynchronization;
-    short extended_header;
-    short experimental;
-    short footer;
-    uint32_t tag_size;
-};
-
-// Extended header
 #define ID3V2_EXTENDED_HEADER_MIN_SIZE 6
 #define ID3V2_EXTENDED_FLAG_SIZE 0x01
 
@@ -97,21 +86,32 @@ struct id3v2_extended_header {
 
 // Footer
 #define ID3V2_FOOTER_IDENTIFIER "3DI"
-
-#define ID3V2_FOOTER_UNSYNCHRONIZATION_BIT 0x80
-#define ID3V2_FOOTER_EXTENDED_HEADER_BIT   0x40
-#define ID3V2_FOOTER_EXPERIMENTAL_BIT      0x20
-#define ID3V2_FOOTER_FOOTER_BIT            0x10
-
 #define ID3V2_FOOTER_ID_SIZE 3
+#define ID3V2_FOOTER_SIZE 10
 
 struct id3v2_footer {
-    char     id[ID3V2_FOOTER_ID_SIZE]; // not null terminated
+    char     id[ID3V2_HEADER_ID_SIZE + 1];
     uint8_t  version;
     uint8_t  revision;
     uint8_t  flags;
-    uint32_t tag_size; // synchsafe
-} __attribute__((packed));
+    uint32_t tag_size;
+};
+
+struct id3v2_header {
+    char     id[ID3V2_HEADER_ID_SIZE + 1];
+    uint8_t  version;
+    uint8_t  revision;
+    short unsynchronization;
+    short extheader_present;
+    short experimental;
+    short footer_present;
+    uint32_t tag_size;
+    struct id3v2_extended_header extheader;
+    uint8_t *frame_data;
+    size_t frame_data_len;
+    size_t i;
+    struct id3v2_footer footer;
+};
 
 // Frame header
 #define ID3V2_FRAME_HEADER_TAG_ALTER_BIT  0x40
@@ -125,6 +125,7 @@ struct id3v2_footer {
 #define ID3V2_FRAME_HEADER_DATA_LENGTH_BIT       0x01
 
 #define ID3V2_FRAME_ID_SIZE 4
+#define ID3V2_FRAME_HEADER_SIZE 10
 
 struct id3v2_frame_header {
     char     id[ID3V2_FRAME_ID_SIZE + 1];
@@ -531,13 +532,9 @@ int verify_id3v2_frame_header(struct id3v2_header *header,
 int verify_id3v2_footer(struct id3v2_footer *footer);
 
 // Find and decode the next ID3v2 tag in the file
-// If not included, the extended header and footer will be unchanged
 // Caller must free the frame data
 // Return 0 if successful, 1 otherwise
-int get_id3v2_tag(int fd, struct id3v2_header *header,
-        struct id3v2_extended_header *extheader,
-        uint8_t **frame_data, size_t *frame_data_len,
-        struct id3v2_footer *footer);
+int get_id3v2_tag(int fd, struct id3v2_header *header);
 
 // Get the next id3v2 frame from the tag.
 //
@@ -553,8 +550,8 @@ int get_id3v2_tag(int fd, struct id3v2_header *header,
 // frame_data_len will contain the length of the frame data
 //
 // Returns 1 if a frame was retrieved successfully, 0 otherwise
-int get_id3v2_frame(struct id3v2_header *idheader, const uint8_t *frames,
-        size_t frames_len, size_t *index, struct id3v2_frame_header *header);
+int get_id3v2_frame(struct id3v2_header *idheader,
+        struct id3v2_frame_header *header);
 
 // Parse frame data
 int parse_AENC_frame(uint8_t *fdata, struct id3v2_frame_AENC *frame);

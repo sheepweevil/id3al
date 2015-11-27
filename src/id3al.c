@@ -12,9 +12,6 @@
 
 static void print_usage(const char *name, FILE *fp);
 static void parse_args(int argc, char * const argv[], int *verbosity);
-static void print_id3v2_frames(struct id3v2_header *header,
-        struct id3v2_extended_header *eheader, uint8_t *frame_data,
-        size_t frame_data_len, int verbosity);
 
 // Print usage information to stdout
 static void print_usage(const char *name, FILE *fp) {
@@ -59,28 +56,11 @@ static void parse_args(int argc, char * const argv[], int *verbosity) {
     return;
 }
 
-// Print all frames in a tag
-static void print_id3v2_frames(struct id3v2_header *header,
-        struct id3v2_extended_header *eheader, uint8_t *frame_data,
-        size_t frame_data_len, int verbosity) {
-    struct id3v2_frame_header fheader;
-    size_t i = 0;
-
-    while (get_id3v2_frame(header, frame_data, frame_data_len, &i, &fheader)) {
-        print_id3v2_frame_header(&fheader, verbosity);
-        print_id3v2_frame(&fheader, verbosity);
-        free(fheader.data);
-    }
-}
-
 // Main function
 int main(int argc, char * const argv[]) {
     struct id3v2_header header;
-    struct id3v2_footer footer;
-    struct id3v2_extended_header extheader;
-    uint8_t *frame_data = NULL;
-    size_t frame_data_len;
-    int verbosity, i, fd;
+    struct id3v2_frame_header fheader;
+    int verbosity, fd, i;
 
     parse_args(argc, argv, &verbosity);
 
@@ -91,19 +71,21 @@ int main(int argc, char * const argv[]) {
             return 1;
         }
 
-        if (get_id3v2_tag(fd, &header, &extheader, &frame_data,
-                    &frame_data_len, &footer)) {
+        if (get_id3v2_tag(fd, &header)) {
             return 1;
         }
 
         print_id3v2_header(&header, verbosity);
-        if (header.extended_header) {
-            print_id3v2_extended_header(&extheader, verbosity);
+        if (header.extheader_present) {
+            print_id3v2_extended_header(&header.extheader, verbosity);
         }
 
-        print_id3v2_frames(&header, &extheader, frame_data, frame_data_len,
-                verbosity);
+        while (get_id3v2_frame(&header, &fheader)) {
+            print_id3v2_frame_header(&fheader, verbosity);
+            print_id3v2_frame(&fheader, verbosity);
+            free(fheader.data);
+        }
     }
-    free(frame_data);
+    free(header.frame_data);
     return 0;
 }

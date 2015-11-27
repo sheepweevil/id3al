@@ -7,12 +7,6 @@
 #include <string.h>
 #include "../id3v2.h"
 
-static void check_type_sizes(void) {
-    assert(sizeof(uint24_t) == 3);
-    assert(sizeof(struct id3v2_footer) == 10);
-    assert(sizeof(struct id3v2_frame_header) == 10);
-}
-
 static void check_synchsafe(void) {
     assert(to_synchsafe(0x0FFFFFFF) == 0x7F7F7F7F);
     assert(from_synchsafe(0x7F7F7F7F) == 0x0FFFFFFF);
@@ -98,21 +92,7 @@ static void check_verify(void) {
 
     memcpy(fheader.id, ID3V2_FRAME_ID_AENC, ID3V2_FRAME_ID_SIZE);
     fheader.size = 0x7f7f7f7f;
-    fheader.status_flags = 0x70;
-    fheader.format_flags = 0x4f;
     assert(verify_id3v2_frame_header(&header, &fheader));
-
-    fheader.size = 0x80808080;
-    assert(!verify_id3v2_frame_header(&header, &fheader));
-    fheader.size = 0x7f7f7f7f;
-
-    fheader.status_flags = 0x8f;
-    assert(!verify_id3v2_frame_header(&header, &fheader));
-    fheader.status_flags = 0x70;
-
-    fheader.format_flags = 0xb0;
-    assert(!verify_id3v2_frame_header(&header, &fheader));
-    fheader.format_flags = 0x4f;
 
     memcpy(footer.id, ID3V2_FOOTER_IDENTIFIER, sizeof(footer.id));
     footer.version = 4;
@@ -170,7 +150,6 @@ static void check_conversion(void) {
 }
 
 int main() {
-    check_type_sizes();
     check_synchsafe();
     check_byte_swap();
     check_synchronize();

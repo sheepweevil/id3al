@@ -71,7 +71,7 @@ int main(int argc, char * const argv[]) {
             return 1;
         }
 
-        if (get_id3v2_tag(fd, &header)) {
+        if (!get_id3v2_tag(fd, &header)) {
             return 1;
         }
 

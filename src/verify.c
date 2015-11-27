@@ -13,46 +13,54 @@ int verify_id3v2_header(struct id3v2_header *header) {
         debug("Tag version %"PRIu8" higher than supported version %d",
                 header->version, ID3V2_SUPPORTED_VERSION);
         return 0;
+    } else if (header->frame_data_len > 0 && header->frame_data == NULL) {
+        debug("Tag frame data is NULL");
+        return 0;
+    } else if (header->frame_data_len > header->tag_size) {
+        debug("Tag frame data len %zu > tag size %"PRIu32,
+                header->frame_data_len, header->tag_size);
+        return 0;
+    } else if (header->i >= header->frame_data_len) {
+        debug("Tag frame data index %zu >= frame data len %zu",
+                header->i, header->frame_data_len);
+        return 0;
     }
-    return 1;
-}
 
-int verify_id3v2_extended_header(struct id3v2_header *header,
-        struct id3v2_extended_header *extheader) {
-    if (extheader->flag_size != ID3V2_EXTENDED_FLAG_SIZE) {
+    if (header->extheader_present &&
+            header->extheader.flag_size != ID3V2_EXTENDED_FLAG_SIZE) {
         debug("Extended header flag size %"PRIu8" should be %d",
-                extheader->flag_size, ID3V2_EXTENDED_FLAG_SIZE);
+                header->extheader.flag_size, ID3V2_EXTENDED_FLAG_SIZE);
         return 0;
+    }
+
+    if (header->footer_present) {
+        if (strcmp(header->footer.id, ID3V2_FOOTER_IDENTIFIER)) {
+            debug("Footer ID %s should be %s",
+                    header->footer.id, ID3V2_FOOTER_IDENTIFIER);
+            return 0;
+        } else if (header->footer.version > ID3V2_SUPPORTED_VERSION) {
+            debug("Footer version %"PRIu8" higher than supported version %d",
+                    header->footer.version, ID3V2_SUPPORTED_VERSION);
+            return 0;
+        } else if (header->footer.flags & 0x0f) {
+            debug("Footer flags 0x%"PRIx8" invalid", header->footer.flags);
+            return 0;
+        } else if (header->footer.version > 3 &&
+                !is_synchsafe(header->footer.tag_size)) {
+            debug("Footer size 0x%"PRIx32" not synchsafe",
+                    header->footer.tag_size);
+            return 0;
+        }
     }
     return 1;
 }
 
-int verify_id3v2_frame_header(struct id3v2_header *header,
-        struct id3v2_frame_header *fheader) {
+int verify_id3v2_frame_header(struct id3v2_frame_header *fheader) {
     if (fheader->compressed && !fheader->data_length_present) {
-        debug("Frame %.*s compression requires data length",
-                ID3V2_FRAME_ID_SIZE, fheader->id);
+        debug("Frame %s compression requires data length", fheader->id);
         return 0;
-    }
-    return 1;
-}
-
-int verify_id3v2_footer(struct id3v2_footer *footer) {
-    if (strncmp(footer->id, ID3V2_FOOTER_IDENTIFIER,
-                ID3V2_FOOTER_ID_SIZE)) {
-        debug("Footer ID %c%c%c should be %s", footer->id[0],
-                footer->id[1], footer->id[2],
-                ID3V2_FOOTER_IDENTIFIER);
-        return 0;
-    } else if (footer->version > ID3V2_SUPPORTED_VERSION) {
-        debug("Footer version %"PRIu8" higher than supported version %d",
-                footer->version, ID3V2_SUPPORTED_VERSION);
-        return 0;
-    } else if (footer->flags & 0x0f) {
-        debug("Footer flags 0x%"PRIx8" invalid", footer->flags);
-        return 0;
-    } else if (footer->version > 3 && !is_synchsafe(footer->tag_size)) {
-        debug("Footer size 0x%"PRIx32" not synchsafe", footer->tag_size);
+    } else if (fheader->data_len > 0 && fheader->data == NULL) {
+        debug("Frame %s data is NULL", fheader->id);
         return 0;
     }
     return 1;

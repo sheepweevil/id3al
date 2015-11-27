@@ -42,7 +42,7 @@ static int parse_id3v2_header(const uint8_t *fdata, size_t *i,
         header->tag_size = from_synchsafe(header->tag_size);
     }
     header->i = 0;
-    return verify_id3v2_header(header);
+    return 1;
 }
 
 // Parse raw data into an extended header
@@ -119,9 +119,12 @@ static int parse_id3v2_extended_header(uint8_t *fdata, size_t *i,
         (*i)++;
     }
 
-    return verify_id3v2_extended_header(header, extheader);
+    return 1;
 }
 
+// Find and decode the next ID3v2 tag in the file
+// Caller must free the frame data
+// Return 1 if successful, 0 otherwise
 int get_id3v2_tag(int fd, struct id3v2_header *header) {
     struct stat st;
     void *fmap;
@@ -135,12 +138,12 @@ int get_id3v2_tag(int fd, struct id3v2_header *header) {
     ret = fstat(fd, &st);
     if (ret == -1) {
         debug("fstat failed: %m");
-        return 1;
+        return 0;
     }
     fmap = mmap(NULL, st.st_size, PROT_READ, MAP_PRIVATE, fd, 0);
     if (fmap == MAP_FAILED) {
         debug("mmap %zu bytes failed: %m", st.st_size);
-        return 1;
+        return 0;
     }
 
     // Search for the header
@@ -158,14 +161,14 @@ int get_id3v2_tag(int fd, struct id3v2_header *header) {
     if (!found_header) {
         debug("No tag found in file");
         munmap(fmap, st.st_size);
-        return 1;
+        return 0;
     }
 
     // Read the extended header if it exists
     if (header->extheader_present) {
         if (!parse_id3v2_extended_header(fmap, &i, header)) {
             munmap(fmap, st.st_size);
-            return 1;
+            return 0;
         }
     }
 
@@ -180,18 +183,18 @@ int get_id3v2_tag(int fd, struct id3v2_header *header) {
     if (len <= 0) {
         debug("Frame data length %zd invalid", len);
         munmap(fmap, st.st_size);
-        return 1;
+        return 0;
     }
     if (i > st.st_size - len) {
         debug("Unexpected eof in frame data");
         munmap(fmap, st.st_size);
-        return 1;
+        return 0;
     }
     header->frame_data = malloc(len);
     if (header->frame_data == NULL) {
         debug("malloc %zd failed: %m", len);
         munmap(fmap, st.st_size);
-        return 1;
+        return 0;
     }
     header->frame_data_len = len;
     memcpy(header->frame_data, fmap + i, len);
@@ -202,12 +205,12 @@ int get_id3v2_tag(int fd, struct id3v2_header *header) {
         if (i > st.st_size - ID3V2_FOOTER_SIZE) {
             debug("Unexpected eof in footer");
             munmap(fmap, st.st_size);
-            return 1;
+            return 0;
         }
         if (strncmp(fmap + i, ID3V2_FOOTER_IDENTIFIER, ID3V2_FOOTER_ID_SIZE)) {
             debug("Expected footer not found");
             munmap(fmap, st.st_size);
-            return 1;
+            return 0;
         }
         memcpy(header->footer.id, fmap + i, ID3V2_FOOTER_ID_SIZE);
         header->footer.id[ID3V2_FOOTER_ID_SIZE] = 0;
@@ -224,18 +227,13 @@ int get_id3v2_tag(int fd, struct id3v2_header *header) {
                 debug("Footer tag size %"PRIx32" not synchsafe",
                         header->footer.tag_size);
                 munmap(fmap, st.st_size);
-                return 1;
+                return 0;
             }
             header->footer.tag_size = from_synchsafe(header->footer.tag_size);
         }
-
-        if (!verify_id3v2_footer(&header->footer)) {
-            munmap(fmap, st.st_size);
-            return 1;
-        }
     }
 
-    return 0;
+    return verify_id3v2_header(header);
 }
 
 // Get the next id3v2 frame from the tag.
@@ -321,7 +319,7 @@ int get_id3v2_frame(struct id3v2_header *idheader,
         return 0;
     }
 
-    if (!verify_id3v2_frame_header(idheader, header)) {
+    if (!verify_id3v2_frame_header(header)) {
         return 0;
     }
 

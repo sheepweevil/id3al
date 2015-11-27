@@ -42,7 +42,7 @@ const char *frame_title(struct id3v2_frame_header *fheader) {
         ID3V2_FRAME_ID_USER, ID3V2_FRAME_ID_USLT, ID3V2_FRAME_ID_WCOM,
         ID3V2_FRAME_ID_WCOP, ID3V2_FRAME_ID_WOAF, ID3V2_FRAME_ID_WOAR,
         ID3V2_FRAME_ID_WOAS, ID3V2_FRAME_ID_WORS, ID3V2_FRAME_ID_WPAY,
-        ID3V2_FRAME_ID_WPUB, ID3V2_FRAME_ID_WXXX
+        ID3V2_FRAME_ID_WPUB, ID3V2_FRAME_ID_WXXX, ID3V2_FRAME_ID_TYER
     };
     static const char *titles[] = {
         "Audio Encryption",
@@ -127,7 +127,8 @@ const char *frame_title(struct id3v2_frame_header *fheader) {
         "Radio Station Webpage",
         "Payment Webpage",
         "Publisher Webpage",
-        "Webpage"
+        "Webpage",
+        "Year"
     };
     size_t i;
 

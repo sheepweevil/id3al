@@ -239,6 +239,9 @@ enum id3v2_encoding {
 #define ID3V2_FRAME_ID_WPUB "WPUB" // Publishers official webpage
 #define ID3V2_FRAME_ID_WXXX "WXXX" // User defined URL link frame
 
+// Frames found in the wild
+#define ID3V2_FRAME_ID_TYER "TYER" // Year
+
 struct id3v2_frame_UFID {
     char *owner;
     uint8_t *id;

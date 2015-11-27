@@ -14,6 +14,7 @@
 
 static int print_enc(const char *str, int len, enum id3v2_encoding enc);
 static size_t strlen_enc(const char *str, enum id3v2_encoding enc);
+static void print_bin(uint8_t *data, size_t len);
 
 static void print_AENC_frame(struct id3v2_frame_header *fheader,
         int verbosity);
@@ -43,8 +44,8 @@ static void print_AENC_frame(struct id3v2_frame_header *fheader,
 //        int verbosity);
 //static void print_OWNE_frame(struct id3v2_frame_header *fheader,
 //        int verbosity);
-//static void print_PRIV_frame(struct id3v2_frame_header *fheader,
-//        int verbosity);
+static void print_PRIV_frame(struct id3v2_frame_header *fheader,
+        int verbosity);
 //static void print_PCNT_frame(struct id3v2_frame_header *fheader,
 //        int verbosity);
 //static void print_POPM_frame(struct id3v2_frame_header *fheader,
@@ -79,6 +80,23 @@ static void print_url_frame(struct id3v2_frame_header *fheader,
         int verbosity);
 static void print_WXXX_frame(struct id3v2_frame_header *fheader,
         int verbosity);
+
+static void print_bin(uint8_t *data, size_t len) {
+    size_t i;
+
+    for (i = 0; i < len - 1; i += 2) {
+        if (i) {
+            printf(" ");
+        }
+        printf("%02"PRIx8"%02"PRIx8, data[i], data[i + 1]);
+    }
+    if (i == len - 1) {
+        if (i) {
+            printf(" ");
+        }
+        printf("%02"PRIx8, data[i]);
+    }
+}
 
 // Print an id3v2 header
 void print_id3v2_header(struct id3v2_header *header, int verbosity) {
@@ -283,6 +301,21 @@ static void print_AENC_frame(struct id3v2_frame_header *fheader,
     printf("\n");
 }
 
+// Print a PRIV frame
+static void print_PRIV_frame(struct id3v2_frame_header *fheader,
+        int verbosity) {
+    const char *title;
+    size_t len;
+
+    title = frame_title(fheader);
+
+    printf("%*s: %s - %s\n", TITLE_WIDTH, title, "Owner", fheader->data);
+    printf("%*s: %s - ", TITLE_WIDTH, title, "Private Data");
+    len = strlen((char *)fheader->data) + 1;
+    print_bin(fheader->data + len, fheader->data_len - len);
+    printf("\n");
+}
+
 // Print a UFID frame
 static void print_UFID_frame(struct id3v2_frame_header *fheader,
         int verbosity) {
@@ -368,18 +401,17 @@ static void print_WXXX_frame(struct id3v2_frame_header *fheader,
 // Print an id3v2 frame
 void print_id3v2_frame(struct id3v2_frame_header *header,
         int verbosity) {
-    if (!strncmp(header->id, ID3V2_FRAME_ID_AENC, ID3V2_FRAME_ID_SIZE)) {
+    if (!strcmp(header->id, ID3V2_FRAME_ID_AENC)) {
         print_AENC_frame(header, verbosity);
-    } else if (!strncmp(header->id, ID3V2_FRAME_ID_UFID,
-                ID3V2_FRAME_ID_SIZE)) {
+    } else if (!strcmp(header->id, ID3V2_FRAME_ID_PRIV)) {
+        print_PRIV_frame(header, verbosity);
+    } else if (!strcmp(header->id, ID3V2_FRAME_ID_UFID)) {
         print_UFID_frame(header, verbosity);
-    } else if (!strncmp(header->id, ID3V2_FRAME_ID_TXXX,
-                ID3V2_FRAME_ID_SIZE)) {
+    } else if (!strcmp(header->id, ID3V2_FRAME_ID_TXXX)) {
         print_TXXX_frame(header, verbosity);
     } else if (header->id[0] == 'T') {
         print_text_frame(header, verbosity);
-    } else if (!strncmp(header->id, ID3V2_FRAME_ID_WXXX,
-                ID3V2_FRAME_ID_SIZE)) {
+    } else if (!strcmp(header->id, ID3V2_FRAME_ID_WXXX)) {
         print_WXXX_frame(header, verbosity);
     } else if (header->id[0] == 'W') {
         print_url_frame(header, verbosity);

@@ -20,7 +20,7 @@ int verify_id3v2_header(struct id3v2_header *header) {
         debug("Tag frame data len %zu > tag size %"PRIu32,
                 header->frame_data_len, header->tag_size);
         return 0;
-    } else if (header->i >= header->frame_data_len) {
+    } else if (header->frame_data_len && header->i >= header->frame_data_len) {
         debug("Tag frame data index %zu >= frame data len %zu",
                 header->i, header->frame_data_len);
         return 0;
@@ -42,13 +42,35 @@ int verify_id3v2_header(struct id3v2_header *header) {
             debug("Footer version %"PRIu8" higher than supported version %d",
                     header->footer.version, ID3V2_SUPPORTED_VERSION);
             return 0;
-        } else if (header->footer.flags & 0x0f) {
-            debug("Footer flags 0x%"PRIx8" invalid", header->footer.flags);
+        } else if (header->footer.version != header->version) {
+            debug("Footer version %"PRIu8" != header version %"PRIu8,
+                    header->footer.version, header->version);
             return 0;
-        } else if (header->footer.version > 3 &&
-                !is_synchsafe(header->footer.tag_size)) {
-            debug("Footer size 0x%"PRIx32" not synchsafe",
-                    header->footer.tag_size);
+        } else if (header->footer.revision != header->revision) {
+            debug("Footer revision %"PRIu8" != header revision %"PRIu8,
+                    header->footer.revision, header->revision);
+            return 0;
+        } else if (header->footer.unsynchronization !=
+                header->unsynchronization) {
+            debug("Footer unsynchronization %s != header unsynchronization %s",
+                    boolstr(header->footer.unsynchronization),
+                    boolstr(header->unsynchronization));
+            return 0;
+        } else if (header->footer.extheader_present !=
+                header->extheader_present) {
+            debug("Footer ext header %s != header ext header %s",
+                    boolstr(header->footer.extheader_present),
+                    boolstr(header->extheader_present));
+            return 0;
+        } else if (header->footer.experimental != header->experimental) {
+            debug("Footer experimental %s != header experimental %s",
+                    boolstr(header->footer.experimental),
+                    boolstr(header->experimental));
+            return 0;
+        } else if (header->footer.footer_present != header->footer_present) {
+            debug("Footer footer %s != header footer %s",
+                    boolstr(header->footer.footer_present),
+                    boolstr(header->footer_present));
             return 0;
         }
     }

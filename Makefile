@@ -10,7 +10,7 @@ check: src/tests/id3test
 	./src/tests/id3test 
 
 src/id3al: src/convert.o src/decode.o src/output.o src/synchronize.o src/verify.o
-src/tests/id3test: src/synchronize.o src/decode.o src/verify.o
+src/tests/id3test: src/convert.o src/decode.o src/synchronize.o src/verify.o
 
 src/tests/id3test.o: src/id3v2.h
 src/id3al.o: src/id3v2.h

@@ -93,7 +93,10 @@ struct id3v2_footer {
     char     id[ID3V2_HEADER_ID_SIZE + 1];
     uint8_t  version;
     uint8_t  revision;
-    uint8_t  flags;
+    short unsynchronization;
+    short extheader_present;
+    short experimental;
+    short footer_present;
     uint32_t tag_size;
 };
 

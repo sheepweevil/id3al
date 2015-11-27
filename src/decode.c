@@ -122,6 +122,40 @@ static int parse_id3v2_extended_header(uint8_t *fdata, size_t *i,
     return 1;
 }
 
+// Parse raw data into the footer
+// Return 1 if successful, 0 otherwise
+static int parse_id3v2_footer(uint8_t *fdata, size_t *i,
+        struct id3v2_header *header) {
+    uint8_t flags;
+    struct id3v2_footer *footer = &header->footer;
+
+    memcpy(footer->id, fdata + *i, ID3V2_FOOTER_ID_SIZE);
+    footer->id[ID3V2_FOOTER_ID_SIZE] = 0;
+    *i += ID3V2_FOOTER_ID_SIZE;
+    footer->version = fdata[*i];
+    (*i)++;
+    footer->revision = fdata[*i];
+    (*i)++;
+    flags = fdata[*i];
+    footer->unsynchronization = flags &
+            ID3V2_HEADER_UNSYNCHRONIZATION_BIT;
+    footer->extheader_present = flags &
+            ID3V2_HEADER_EXTENDED_HEADER_BIT;
+    footer->experimental = flags & ID3V2_HEADER_EXPERIMENTAL_BIT;
+    footer->footer_present = flags & ID3V2_HEADER_FOOTER_BIT;
+    (*i)++;
+    footer->tag_size = byte_swap_32(*(uint32_t *)(fdata + *i));
+    if (header->version >= 4) {
+        if (!is_synchsafe(footer->tag_size)) {
+            debug("Footer tag size %"PRIx32" not synchsafe",
+                    footer->tag_size);
+            return 0;
+        }
+        footer->tag_size = from_synchsafe(footer->tag_size);
+    }
+    return 1;
+}
+
 // Find and decode the next ID3v2 tag in the file
 // Caller must free the frame data
 // Return 1 if successful, 0 otherwise
@@ -212,24 +246,9 @@ int get_id3v2_tag(int fd, struct id3v2_header *header) {
             munmap(fmap, st.st_size);
             return 0;
         }
-        memcpy(header->footer.id, fmap + i, ID3V2_FOOTER_ID_SIZE);
-        header->footer.id[ID3V2_FOOTER_ID_SIZE] = 0;
-        i += ID3V2_FOOTER_ID_SIZE;
-        header->footer.version = *(uint8_t *)(fmap + i);
-        i++;
-        header->footer.revision = *(uint8_t *)(fmap + i);
-        i++;
-        header->footer.flags = *(uint8_t *)(fmap + i);
-        i++;
-        header->footer.tag_size = byte_swap_32(*(uint32_t *)(fmap + i));
-        if (header->version >= 4) {
-            if (!is_synchsafe(header->footer.tag_size)) {
-                debug("Footer tag size %"PRIx32" not synchsafe",
-                        header->footer.tag_size);
-                munmap(fmap, st.st_size);
-                return 0;
-            }
-            header->footer.tag_size = from_synchsafe(header->footer.tag_size);
+        if (!parse_id3v2_footer(fmap, &i, header)) {
+            munmap(fmap, st.st_size);
+            return 0;
         }
     }
 

@@ -62,14 +62,34 @@ static void check_synchronize(void) {
 
 static void check_verify(void) {
     struct id3v2_header header;
-    struct id3v2_extended_header extheader;
     struct id3v2_frame_header fheader;
-    struct id3v2_footer footer;
 
-    memcpy(header.id, ID3V2_FILE_IDENTIFIER, sizeof(header.id));
+    strncpy(header.id, ID3V2_FILE_IDENTIFIER, sizeof(header.id));
     header.version = 4;
     header.revision = 0;
+    header.unsynchronization = 1;
+    header.extheader_present = 1;
+    header.experimental = 1;
+    header.footer_present = 1;
     header.tag_size = 0x7f7f7f7f;
+    header.extheader.size = 10;
+    header.extheader.flag_size = 1;
+    header.extheader.update = 0;
+    header.extheader.crc_present = 1;
+    header.extheader.restrictions = 1;
+    header.extheader.crc = 0;
+    header.frame_data = NULL;
+    header.frame_data_len = 0;
+    header.i = 0;
+    strncpy(header.footer.id, ID3V2_FOOTER_IDENTIFIER,
+            sizeof(header.footer.id));
+    header.footer.version = 4;
+    header.footer.revision = 0;
+    header.footer.unsynchronization = 1;
+    header.footer.extheader_present = 1;
+    header.footer.experimental = 1;
+    header.footer.footer_present = 1;
+    header.footer.tag_size = 0x7f7f7f7f;
 
     assert(verify_id3v2_header(&header));
 
@@ -81,41 +101,60 @@ static void check_verify(void) {
     assert(!verify_id3v2_header(&header));
     header.version = 4;
 
-    extheader.size = 0x7f7f7f7f;
-    extheader.flag_size = 1;
+    header.extheader.flag_size = 2;
+    assert(!verify_id3v2_header(&header));
+    header.extheader.flag_size = 1;
 
-    assert(verify_id3v2_extended_header(&header, &extheader));
+    header.frame_data_len = 1;
+    assert(!verify_id3v2_header(&header));
+    header.frame_data_len = 0;
 
-    extheader.flag_size = 2;
-    assert(!verify_id3v2_extended_header(&header, &extheader));
-    extheader.flag_size = 1;
+    header.footer.version = 5;
+    assert(!verify_id3v2_header(&header));
+    header.footer.version = 4;
 
-    memcpy(fheader.id, ID3V2_FRAME_ID_AENC, ID3V2_FRAME_ID_SIZE);
+    header.footer.id[0] = '4';
+    assert(!verify_id3v2_header(&header));
+    header.footer.id[0] = '3';
+
+    header.footer.version = 1;
+    assert(!verify_id3v2_header(&header));
+    header.footer.version = 4;
+
+    header.footer.revision = 1;
+    assert(!verify_id3v2_header(&header));
+    header.footer.revision = 0;
+
+    header.footer.unsynchronization = 0;
+    assert(!verify_id3v2_header(&header));
+    header.footer.unsynchronization = 1;
+
+    header.footer.extheader_present = 0;
+    assert(!verify_id3v2_header(&header));
+    header.footer.extheader_present = 1;
+
+    header.footer.experimental = 0;
+    assert(!verify_id3v2_header(&header));
+    header.footer.experimental = 1;
+
+    header.footer.footer_present = 0;
+    assert(!verify_id3v2_header(&header));
+    header.footer.footer_present = 1;
+
+    strncpy(fheader.id, ID3V2_FRAME_ID_AENC, ID3V2_FRAME_ID_SIZE);
     fheader.size = 0x7f7f7f7f;
-    assert(verify_id3v2_frame_header(&header, &fheader));
+    fheader.compressed = 1;
+    fheader.data_length_present = 1;
+    fheader.data_len = 0;
+    fheader.data = NULL;
 
-    memcpy(footer.id, ID3V2_FOOTER_IDENTIFIER, sizeof(footer.id));
-    footer.version = 4;
-    footer.revision = 0;
-    footer.flags = 0xf0;
-    footer.tag_size = 0x7f7f7f7f;
+    assert(verify_id3v2_frame_header(&fheader));
 
-    assert(verify_id3v2_footer(&footer));
+    fheader.data_len = 1;
+    assert(!verify_id3v2_frame_header(&fheader));
+    fheader.data_len = 0;
 
-    footer.id[2] = 'H';
-    assert(!verify_id3v2_footer(&footer));
-    footer.id[2] = 'I';
-
-    footer.version = 5;
-    assert(!verify_id3v2_footer(&footer));
-    footer.version = 4;
-
-    footer.flags = 0x0f;
-    assert(!verify_id3v2_footer(&footer));
-    footer.flags = 0xf0;
-
-    footer.tag_size = 0x80808080;
-    assert(!verify_id3v2_footer(&footer));
+    fheader.data_length_present = 0;
 }
 
 static void check_conversion(void) {

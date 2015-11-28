@@ -363,9 +363,10 @@ struct id3v2_frame_SYLT {
 
 struct id3v2_frame_COMM {
     uint8_t encoding;
-    char language[ID3V2_LANGUAGE_ID_SIZE];
+    char language[ID3V2_LANGUAGE_ID_SIZE + 1];
     char *content_descriptor;
     char *comment;
+    size_t comment_len;
 };
 
 enum id3v2_RVA2_channel_type {
@@ -564,6 +565,8 @@ size_t strlen_enc(const char *str, enum id3v2_encoding enc);
 int parse_AENC_frame(uint8_t *fdata, struct id3v2_frame_AENC *frame);
 int parse_APIC_frame(struct id3v2_frame_header *header,
         struct id3v2_frame_APIC *frame);
+int parse_COMM_frame(struct id3v2_frame_header *header,
+        struct id3v2_frame_COMM *frame);
 int parse_UFID_frame(uint8_t *fdata, struct id3v2_frame_UFID *frame);
 int parse_text_frame(uint8_t *fdata, struct id3v2_frame_text *frame);
 int parse_TXXX_frame(uint8_t *fdata, struct id3v2_frame_TXXX *frame);

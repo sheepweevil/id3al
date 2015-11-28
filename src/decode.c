@@ -446,6 +446,10 @@ int parse_AENC_frame(uint8_t *fdata, struct id3v2_frame_AENC *frame) {
 int parse_APIC_frame(struct id3v2_frame_header *header,
         struct id3v2_frame_APIC *frame) {
     size_t i = 0;
+
+    assert(header);
+    assert(frame);
+
     frame->encoding = header->data[i];
     i++;
     frame->mime_type = (char *)(header->data + i);
@@ -456,6 +460,25 @@ int parse_APIC_frame(struct id3v2_frame_header *header,
     i += strlen_enc(frame->description, frame->encoding);
     frame->picture = header->data + i;
     frame->picture_len = header->data_len - i;
+    return 1;
+}
+
+int parse_COMM_frame(struct id3v2_frame_header *header,
+        struct id3v2_frame_COMM *frame) {
+    size_t i = 0;
+
+    assert(header);
+    assert(frame);
+
+    frame->encoding = header->data[i];
+    i++;
+    memcpy(frame->language, header->data + i, ID3V2_LANGUAGE_ID_SIZE);
+    frame->language[ID3V2_LANGUAGE_ID_SIZE] = 0;
+    i += ID3V2_LANGUAGE_ID_SIZE;
+    frame->content_descriptor = (char *)(header->data + i);
+    i += strlen_enc(frame->content_descriptor, frame->encoding);
+    frame->comment = (char *)(header->data + i);
+    frame->comment_len = header->data_len - i;
     return 1;
 }
 

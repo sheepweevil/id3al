@@ -26,8 +26,8 @@ static void print_APIC_frame(struct id3v2_frame_header *fheader,
         int verbosity, int extract);
 //static void print_ASPI_frame(struct id3v2_frame_header *fheader,
 //        int verbosity);
-//static void print_COMM_frame(struct id3v2_frame_header *fheader,
-//        int verbosity);
+static void print_COMM_frame(struct id3v2_frame_header *fheader,
+        int verbosity);
 //static void print_COMR_frame(struct id3v2_frame_header *fheader,
 //        int verbosity);
 //static void print_ENCR_frame(struct id3v2_frame_header *fheader,
@@ -357,6 +357,28 @@ static void print_APIC_frame(struct id3v2_frame_header *fheader,
     }
 }
 
+// Print a COMM frame
+static void print_COMM_frame(struct id3v2_frame_header *fheader,
+        int verbosity) {
+    struct id3v2_frame_COMM frame;
+    const char *title;
+
+    parse_COMM_frame(fheader, &frame);
+    title = frame_title(fheader);
+
+    if (verbosity > 0) {
+        printf("%*s: %s - %s\n", TITLE_WIDTH, title, "Encoding",
+                encoding_str(frame.encoding));
+    }
+    printf("%*s: %s - %s\n", TITLE_WIDTH, title, "Language", frame.language);
+    printf("%*s: %s - ", TITLE_WIDTH, title, "Description");
+    print_enc(frame.content_descriptor, -1, frame.encoding);
+    printf("\n");
+    printf("%*s: %s - ", TITLE_WIDTH, title, "Comment");
+    print_enc(frame.comment, frame.comment_len, frame.encoding);
+    printf("\n");
+}
+
 // Print a PRIV frame
 static void print_PRIV_frame(struct id3v2_frame_header *fheader,
         int verbosity) {
@@ -457,6 +479,8 @@ void print_id3v2_frame(struct id3v2_frame_header *header,
         print_AENC_frame(header, verbosity);
     } else if (!strcmp(header->id, ID3V2_FRAME_ID_APIC)) {
         print_APIC_frame(header, verbosity, extract);
+    } else if (!strcmp(header->id, ID3V2_FRAME_ID_COMM)) {
+        print_COMM_frame(header, verbosity);
     } else if (!strcmp(header->id, ID3V2_FRAME_ID_PRIV)) {
         print_PRIV_frame(header, verbosity);
     } else if (!strcmp(header->id, ID3V2_FRAME_ID_UFID)) {

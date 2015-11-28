@@ -444,7 +444,7 @@ int parse_text_frame(uint8_t *fdata, struct id3v2_frame_text *frame) {
 int parse_TXXX_frame(uint8_t *fdata, struct id3v2_frame_TXXX *frame) {
     frame->encoding = *fdata;
     frame->description = (char *)(fdata + 1);
-    frame->value = (char *)(fdata + 1 + strlen(frame->description));
+    frame->value = (char *)(fdata + strlen(frame->description) + 2);
     return 1;
 }
 

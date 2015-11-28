@@ -206,7 +206,7 @@ void print_id3v2_frame_header(struct id3v2_frame_header *fheader,
 // Returns the number of bytes printed on success, -1 otherwise.
 static int print_enc(const char *str, int len, enum id3v2_encoding enc) {
     UChar *text;
-    UErrorCode uerr;
+    UErrorCode uerr = U_ZERO_ERROR;
     int ret;
     int32_t textlen;
 
@@ -236,11 +236,7 @@ static int print_enc(const char *str, int len, enum id3v2_encoding enc) {
             if (len == -1) {
                 textlen = strlen(str) * 2 + 2;
             } else {
-                text = malloc(len * 2 + 2);
-                if (text == NULL) {
-                    debug("malloc %d failed: %m", len * 2 + 2);
-                    return -1;
-                }
+                textlen = len * 2 + 2;
             }
             text = malloc(textlen);
             if (text == NULL) {
@@ -356,10 +352,9 @@ static void print_TXXX_frame(struct id3v2_frame_header *fheader,
         printf("%*s: %s - %s\n", TITLE_WIDTH, title, "Encoding",
                 encoding_str(frame.encoding));
     }
-    printf("%*s: %s - ", TITLE_WIDTH, title, "Description");
+    printf("%*s: ", TITLE_WIDTH, title);
     print_enc(frame.description, -1, frame.encoding);
-    printf("\n");
-    printf("%*s: %s - ", TITLE_WIDTH, title, "Value");
+    printf(" - ");
     print_enc(frame.value,
             fheader->data_len -
                     strlen_enc(frame.description, frame.encoding) - 1,

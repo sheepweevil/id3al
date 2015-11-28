@@ -602,6 +602,6 @@ void print_id3v2_extended_header(struct id3v2_extended_header *eheader,
 void print_id3v2_frame_header(struct id3v2_frame_header *fheader,
         int verbosity);
 void print_id3v2_frame(struct id3v2_frame_header *header,
-        int verbosity);
+        int verbosity, int extract);
 
 #endif // _ID3V2_H

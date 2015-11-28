@@ -7,8 +7,23 @@
 #include <string.h>
 #include <sys/mman.h>
 #include <sys/stat.h>
+#include "unicode/ustring.h"
 #include "zlib.h"
 #include "id3v2.h"
+
+// Get the length of a terminated encoded string in bytes,
+// including the terminator.
+size_t strlen_enc(const char *str, enum id3v2_encoding enc) {
+    switch (enc) {
+        case ID3V2_ENCODING_UTF_16:
+        case ID3V2_ENCODING_UTF_16BE:
+            return u_strlen((UChar *)str) * sizeof(UChar) + sizeof(UChar);
+        default:
+            break;
+    }
+    return strlen(str) + 1;
+}
+
 
 // Parse raw data into a header
 // Return 1 on success, 0 otherwise

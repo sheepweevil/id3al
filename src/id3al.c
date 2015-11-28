@@ -11,30 +11,36 @@
 #include "id3v2.h"
 
 static void print_usage(const char *name, FILE *fp);
-static void parse_args(int argc, char * const argv[], int *verbosity);
+static void parse_args(int argc, char * const argv[], int *verbosity,
+        int *extract);
 
 // Print usage information to stdout
 static void print_usage(const char *name, FILE *fp) {
-    fprintf(fp, "Usage: %s [-h] [-v] FILE...\n"
+    fprintf(fp, "Usage: %s [-h] [-v] [-e] FILE...\n"
             "    -h, --help:    Print this message\n"
             "    -v, --verbose: Print more information\n"
+            "    -e, --extract: Extract embedded files\n"
             "    FILE:          One or more audio files to read\n", name);
     return;
 }
 
 // Parse arguments
-static void parse_args(int argc, char * const argv[], int *verbosity) {
+static void parse_args(int argc, char * const argv[], int *verbosity,
+        int *extract) {
     int opt;
     struct option longopts[] = {
         {"help", no_argument, NULL, 'h'},
         {"verbose", no_argument, NULL, 'v'},
+        {"extract", no_argument, NULL, 'e'},
         {NULL, 0, NULL, 0}
     };
 
     assert(verbosity);
+    assert(extract);
 
     *verbosity = 0;
-    while ((opt = getopt_long(argc, argv, "hv", longopts, NULL)) != -1) {
+    *extract = 0;
+    while ((opt = getopt_long(argc, argv, "hve", longopts, NULL)) != -1) {
         switch (opt) {
             case 'v':
                 (*verbosity)++;
@@ -42,6 +48,9 @@ static void parse_args(int argc, char * const argv[], int *verbosity) {
             case 'h':
                 print_usage(argv[0], stdout);
                 exit(0);
+                break;
+            case 'e':
+                *extract = 1;
                 break;
             default:
                 print_usage(argv[0], stderr);
@@ -60,9 +69,9 @@ static void parse_args(int argc, char * const argv[], int *verbosity) {
 int main(int argc, char * const argv[]) {
     struct id3v2_header header;
     struct id3v2_frame_header fheader;
-    int verbosity, fd, i;
+    int verbosity, extract, fd, i;
 
-    parse_args(argc, argv, &verbosity);
+    parse_args(argc, argv, &verbosity, &extract);
 
     for (i = optind; i < argc; i++) {
         fd = open(argv[i], O_RDONLY);
@@ -82,7 +91,7 @@ int main(int argc, char * const argv[]) {
 
         while (get_id3v2_frame(&header, &fheader)) {
             print_id3v2_frame_header(&fheader, verbosity);
-            print_id3v2_frame(&fheader, verbosity);
+            print_id3v2_frame(&fheader, verbosity, extract);
             free(fheader.data);
         }
     }

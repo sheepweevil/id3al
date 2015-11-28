@@ -17,14 +17,13 @@
 #define TITLE_WIDTH 24
 
 static int print_enc(const char *str, int len, enum id3v2_encoding enc);
-size_t strlen_enc(const char *str, enum id3v2_encoding enc);
 static void print_bin(uint8_t *data, size_t len);
 static char * write_tmpfile(uint8_t *data, size_t len);
 
 static void print_AENC_frame(struct id3v2_frame_header *fheader,
         int verbosity);
-//static void print_APIC_frame(struct id3v2_frame_header *fheader,
-//        int verbosity);
+static void print_APIC_frame(struct id3v2_frame_header *fheader,
+        int verbosity, int extract);
 //static void print_ASPI_frame(struct id3v2_frame_header *fheader,
 //        int verbosity);
 //static void print_COMM_frame(struct id3v2_frame_header *fheader,
@@ -305,19 +304,6 @@ static int print_enc(const char *str, int len, enum id3v2_encoding enc) {
     return ret;
 }
 
-// Get the length of a terminated encoded string in bytes,
-// including the terminator.
-size_t strlen_enc(const char *str, enum id3v2_encoding enc) {
-    switch (enc) {
-        case ID3V2_ENCODING_UTF_16:
-        case ID3V2_ENCODING_UTF_16BE:
-            return u_strlen((UChar *)str) * sizeof(UChar) + sizeof(UChar);
-        default:
-            break;
-    }
-    return strlen(str) + 1;
-}
-
 // Print an AENC frame
 static void print_AENC_frame(struct id3v2_frame_header *fheader,
         int verbosity) {
@@ -340,7 +326,7 @@ static void print_AENC_frame(struct id3v2_frame_header *fheader,
 
 // Print an APIC frame
 static void print_APIC_frame(struct id3v2_frame_header *fheader,
-        int verbosity) {
+        int verbosity, int extract) {
     struct id3v2_frame_APIC frame;
     const char *title;
     char *picfile;
@@ -359,12 +345,16 @@ static void print_APIC_frame(struct id3v2_frame_header *fheader,
     print_enc(frame.description, -1, frame.encoding);
     printf("\n");
 
-    picfile = write_tmpfile(frame.picture, frame.picture_len);
-    if (picfile == NULL) {
-        return;
+    if (extract) {
+        picfile = write_tmpfile(frame.picture, frame.picture_len);
+        if (picfile == NULL) {
+            return;
+        }
+        printf("%*s: %s - %s\n", TITLE_WIDTH, title, "Saved To", picfile);
+        free(picfile);
+    } else {
+        printf("%*s: %s\n", TITLE_WIDTH, title, "Use -e to extract picture");
     }
-    printf("%*s: %s - %s\n", TITLE_WIDTH, title, "Saved To", picfile);
-    free(picfile);
 }
 
 // Print a PRIV frame
@@ -462,11 +452,11 @@ static void print_WXXX_frame(struct id3v2_frame_header *fheader,
 
 // Print an id3v2 frame
 void print_id3v2_frame(struct id3v2_frame_header *header,
-        int verbosity) {
+        int verbosity, int extract) {
     if (!strcmp(header->id, ID3V2_FRAME_ID_AENC)) {
         print_AENC_frame(header, verbosity);
     } else if (!strcmp(header->id, ID3V2_FRAME_ID_APIC)) {
-        print_APIC_frame(header, verbosity);
+        print_APIC_frame(header, verbosity, extract);
     } else if (!strcmp(header->id, ID3V2_FRAME_ID_PRIV)) {
         print_PRIV_frame(header, verbosity);
     } else if (!strcmp(header->id, ID3V2_FRAME_ID_UFID)) {

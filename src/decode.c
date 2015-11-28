@@ -428,6 +428,22 @@ int parse_AENC_frame(uint8_t *fdata, struct id3v2_frame_AENC *frame) {
     return 1;
 }
 
+int parse_APIC_frame(struct id3v2_frame_header *header,
+        struct id3v2_frame_APIC *frame) {
+    size_t i = 0;
+    frame->encoding = header->data[i];
+    i++;
+    frame->mime_type = (char *)(header->data + i);
+    i += strlen(frame->mime_type) + 1;
+    frame->picture_type = header->data[i];
+    i++;
+    frame->description = (char *)(header->data + i);
+    i += strlen_enc(frame->description, frame->encoding);
+    frame->picture = header->data + i;
+    frame->picture_len = header->data_len - i;
+    return 1;
+}
+
 int parse_UFID_frame(uint8_t *fdata, struct id3v2_frame_UFID *frame) {
     frame->owner = (char *)fdata;
     frame->id = fdata + strlen(frame->owner) + 1;

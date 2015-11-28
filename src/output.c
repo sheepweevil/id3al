@@ -1,11 +1,15 @@
 // Implementation of ouptut functions
 // Copyright 2015 David Gloe.
 
+#define _GNU_SOURCE
+
 #include <assert.h>
+#include <errno.h>
 #include <inttypes.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 #include "unicode/ustdio.h"
 #include "unicode/ustring.h"
 #include "id3v2.h"
@@ -13,8 +17,9 @@
 #define TITLE_WIDTH 24
 
 static int print_enc(const char *str, int len, enum id3v2_encoding enc);
-static size_t strlen_enc(const char *str, enum id3v2_encoding enc);
+size_t strlen_enc(const char *str, enum id3v2_encoding enc);
 static void print_bin(uint8_t *data, size_t len);
+static char * write_tmpfile(uint8_t *data, size_t len);
 
 static void print_AENC_frame(struct id3v2_frame_header *fheader,
         int verbosity);
@@ -97,6 +102,43 @@ static void print_bin(uint8_t *data, size_t len) {
         }
         printf("%02"PRIx8, data[i]);
     }
+}
+
+// Save arbitrary data to a temporary file
+// Returns the name of the file, or NULL on failure
+// The return value must be freed
+static char * write_tmpfile(uint8_t *data, size_t len) {
+    char *template;
+    int fd;
+    size_t written = 0;
+    ssize_t count;
+
+    if (asprintf(&template, "id3al-XXXXXX") == -1) {
+        debug("asprintf failed");
+        return NULL;
+    }
+    fd = mkstemp(template);
+    if (fd == -1) {
+        debug("mkstemp failed: %m");
+        free(template);
+        return NULL;
+    }
+    while (written < len) {
+        count = write(fd, data + written, len - written);
+        if (count == -1) {
+            if (errno != EINTR && errno != EAGAIN) {
+                debug("write failed: %m");
+                close(fd);
+                unlink(template);
+                free(template);
+                return NULL;
+            }
+        } else {
+            written += count;
+        }
+    }
+    close(fd);
+    return template;
 }
 
 // Print an id3v2 header
@@ -265,7 +307,7 @@ static int print_enc(const char *str, int len, enum id3v2_encoding enc) {
 
 // Get the length of a terminated encoded string in bytes,
 // including the terminator.
-static size_t strlen_enc(const char *str, enum id3v2_encoding enc) {
+size_t strlen_enc(const char *str, enum id3v2_encoding enc) {
     switch (enc) {
         case ID3V2_ENCODING_UTF_16:
         case ID3V2_ENCODING_UTF_16BE:
@@ -294,6 +336,35 @@ static void print_AENC_frame(struct id3v2_frame_header *fheader,
     print_bin(frame.encryption_info,
             fheader->data_len - strlen(frame.owner_id) - 5);
     printf("\n");
+}
+
+// Print an APIC frame
+static void print_APIC_frame(struct id3v2_frame_header *fheader,
+        int verbosity) {
+    struct id3v2_frame_APIC frame;
+    const char *title;
+    char *picfile;
+
+    parse_APIC_frame(fheader, &frame);
+    title = frame_title(fheader);
+
+    if (verbosity > 0) {
+        printf("%*s: %s - %s\n", TITLE_WIDTH, title, "Encoding",
+                encoding_str(frame.encoding));
+    }
+    printf("%*s: %s - %s\n", TITLE_WIDTH, title, "MIME Type", frame.mime_type);
+    printf("%*s: %s - %s\n", TITLE_WIDTH, title, "Picture Type",
+            pic_type_str(frame.picture_type));
+    printf("%*s: %s - ", TITLE_WIDTH, title, "Description");
+    print_enc(frame.description, -1, frame.encoding);
+    printf("\n");
+
+    picfile = write_tmpfile(frame.picture, frame.picture_len);
+    if (picfile == NULL) {
+        return;
+    }
+    printf("%*s: %s - %s\n", TITLE_WIDTH, title, "Saved To", picfile);
+    free(picfile);
 }
 
 // Print a PRIV frame
@@ -394,6 +465,8 @@ void print_id3v2_frame(struct id3v2_frame_header *header,
         int verbosity) {
     if (!strcmp(header->id, ID3V2_FRAME_ID_AENC)) {
         print_AENC_frame(header, verbosity);
+    } else if (!strcmp(header->id, ID3V2_FRAME_ID_APIC)) {
+        print_APIC_frame(header, verbosity);
     } else if (!strcmp(header->id, ID3V2_FRAME_ID_PRIV)) {
         print_PRIV_frame(header, verbosity);
     } else if (!strcmp(header->id, ID3V2_FRAME_ID_UFID)) {

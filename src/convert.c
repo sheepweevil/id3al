@@ -59,7 +59,7 @@ const char *frame_title(struct id3v2_frame_header *fheader) {
         "Music CD",
         "MPEG Lookup Table",
         "Ownership",
-        "Private",
+        "Private Data",
         "Play Counter",
         "Popularimeter",
         "Position Sync",

@@ -81,6 +81,7 @@ static void print_url_frame(struct id3v2_frame_header *fheader,
 static void print_WXXX_frame(struct id3v2_frame_header *fheader,
         int verbosity);
 
+// Print arbitrary data in sections of four hex digits
 static void print_bin(uint8_t *data, size_t len) {
     size_t i;
 
@@ -284,7 +285,6 @@ static void print_AENC_frame(struct id3v2_frame_header *fheader,
         int verbosity) {
     struct id3v2_frame_AENC frame;
     const char *title;
-    size_t i;
 
     parse_AENC_frame(fheader->data, &frame);
     title = frame_title(fheader);
@@ -295,9 +295,8 @@ static void print_AENC_frame(struct id3v2_frame_header *fheader,
     printf("%*s: %s - %"PRIu16"\n", TITLE_WIDTH, title, "Preview Length",
             frame.preview_length);
     printf("%*s: %s - ", TITLE_WIDTH, title, "Encryption Info");
-    for (i = 0; i < fheader->data_len - strlen(frame.owner_id) - 5; i++) {
-        printf("%"PRIx8" ", frame.encryption_info[i]);
-    }
+    print_bin(frame.encryption_info,
+            fheader->data_len - strlen(frame.owner_id) - 5);
     printf("\n");
 }
 
@@ -310,7 +309,7 @@ static void print_PRIV_frame(struct id3v2_frame_header *fheader,
     title = frame_title(fheader);
 
     printf("%*s: %s - %s\n", TITLE_WIDTH, title, "Owner", fheader->data);
-    printf("%*s: %s - ", TITLE_WIDTH, title, "Private Data");
+    printf("%*s: ", TITLE_WIDTH, title);
     len = strlen((char *)fheader->data) + 1;
     print_bin(fheader->data + len, fheader->data_len - len);
     printf("\n");
@@ -320,16 +319,13 @@ static void print_PRIV_frame(struct id3v2_frame_header *fheader,
 static void print_UFID_frame(struct id3v2_frame_header *fheader,
         int verbosity) {
     struct id3v2_frame_UFID frame;
-    size_t i;
     const char *title;
 
     parse_UFID_frame(fheader->data, &frame);
     title = frame_title(fheader);
     printf("%*s: %s - %s\n", TITLE_WIDTH, title, "Owner", frame.owner);
     printf("%*s: ", TITLE_WIDTH, title);
-    for (i = 0; i < fheader->data_len - strlen(frame.owner) - 1; i++) {
-        printf("%"PRIx8" ", frame.id[i]);
-    }
+    print_bin(frame.id, fheader->data_len - strlen(frame.owner) - 1);
     printf("\n");
 }
 
